@@ -29,11 +29,3 @@ include = ["ocean-runner"]
 
 [tool.hatch.build.targets.wheel]
 include = ["ocean-runner"]
-
-[tool.mypy]
-strict = true
-warn_return_any = true
-disallow_any_explicit = true
-
-[dependency-groups]
-dev = ["mypy>=1.15.0", "pytest>=8.3.4"]
