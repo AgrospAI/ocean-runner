@@ -11,7 +11,9 @@ classifiers = [
     "Operating System :: OS Independent",
     "License :: OSI Approved :: MIT License",
 ]
-dependencies = []
+dependencies = [
+    "oceanprotocol-job-details==0.2.4",
+]
 
 # [project.urls]
 # Homepage = ""
