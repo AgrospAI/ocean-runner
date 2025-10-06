@@ -1,5 +1,5 @@
 [project]
-name = "pypi-package-template"
+name = "ocean-runner"
 version = "0.1.0"
 description = "A Python PyPI package template"
 authors = [{ name = "John Doe", email = "john.doe@foo.bar" }]
@@ -11,26 +11,24 @@ classifiers = [
     "Operating System :: OS Independent",
     "License :: OSI Approved :: MIT License",
 ]
-dependencies = [
-    "oceanprotocol-job-details==0.2.4",
-]
+dependencies = ["oceanprotocol-job-details==0.2.4"]
 
-# [project.urls]
-# Homepage = ""
-# Issues = ""
+[project.urls]
+Homepage = "https://github.com/AgrospAI/ocean-runner"
+Issues = "https://github.com/AgrospAI/ocean-runner/issues"
 
 [tool.pytest.ini_options]
-pythonpath = "pypi-package-template"
+pythonpath = "ocean-runner"
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.sdist]
-include = ["pypi-package-template"]
+include = ["ocean-runner"]
 
 [tool.hatch.build.targets.wheel]
-include = ["pypi-package-template"]
+include = ["ocean-runner"]
 
 [tool.mypy]
 strict = true
