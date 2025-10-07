@@ -14,7 +14,10 @@ classifiers = [
     "Operating System :: OS Independent",
     "License :: OSI Approved :: MIT License",
 ]
-dependencies = ["oceanprotocol-job-details==0.2.6", "pytest>=8.4.2"]
+dependencies = [
+    "oceanprotocol-job-details==0.2.6",
+    "pytest>=8.4.2",
+]
 
 [project.urls]
 Homepage = "https://github.com/AgrospAI/ocean-runner"
