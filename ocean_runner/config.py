@@ -39,7 +39,9 @@ class Config:
     logger: Logger | None = None
     """Logger to use in the algorithm"""
 
-    source_paths: Iterable[Path] = [Path("/algorithm/src")]
+    source_paths: Iterable[Path] = field(
+        default_factory=lambda: [Path("/algorithm/src")]
+    )
     """Paths that should be included so the code executes correctly"""
 
     environment: Environment = Environment()
