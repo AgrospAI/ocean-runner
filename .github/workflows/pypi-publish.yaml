@@ -43,9 +43,11 @@ jobs:
       - name: Bump version
         id: bump
         run: |
-          bump-my-version bump patch --allow-dirty
+          source .venv/bin/activate
+          bump-my-version bump minor --allow-dirty
           NEW_VERSION=$(bump-my-version show current_version)
           echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+
 
       - name: Commit and push new version
         env:
