@@ -38,6 +38,9 @@ Algorithm(
         
         logger: ... # type: logging.Logger
         # Custom logger to use.
+
+        source_paths: ... # type: Iterable[Path]
+        # Source paths to include in the PATH
         
         environment: ... 
         # type: ocean_runner.Environment. Mock of environment variables.
@@ -68,6 +71,11 @@ Algorithm(
         """
         Run this callback when an exception is caught
         NOTE: it's not recommended to catch exceptions this way. Should re-raise and halt the execution.
+        """
+
+        source_paths: [Path("/algorithm/src")],
+        """
+        Source paths to include in the PATH. '/algorithm/src' is the default since our templates place the algorithm source files there.
         """
 
         logger: logger,

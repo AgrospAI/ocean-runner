@@ -1,7 +1,8 @@
 from dataclasses import asdict, dataclass, field
 from logging import Logger
 import os
-from typing import Callable, TypeVar
+from pathlib import Path
+from typing import Callable, Iterable, TypeVar
 
 T = TypeVar("T")
 
@@ -38,4 +39,8 @@ class Config:
     logger: Logger | None = None
     """Logger to use in the algorithm"""
 
+    source_paths: Iterable[Path] = [Path("/algorithm/src")]
+    """Paths that should be included so the code executes correctly"""
+
     environment: Environment = Environment()
+    """Mock of environment data"""

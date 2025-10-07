@@ -65,6 +65,12 @@ class Algorithm(Generic[JobDetailsT, ResultT]):
         if isinstance(config.environment.base_dir, str):
             config.environment.base_dir = Path(config.environment.base_dir)
 
+        if config.source_paths:
+            import sys
+
+            sys.path.extend([str(path.absolute()) for path in config.source_paths])
+            self.logger.debug(f"Added [{len(config.source_paths)}] entries to PATH")
+
         self._job_details = JobDetails.load(
             config.custom_input,
             **config.environment.dict(),
