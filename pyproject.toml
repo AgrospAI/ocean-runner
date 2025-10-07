@@ -3,7 +3,7 @@ name = "ocean-runner"
 version = "0.1.2"
 description = "A fluent API for OceanProtocol algorithms"
 authors = [
-    { name = "AgospAI", email = "agrospai@udl.cat" },
+    { name = "AgrospAI", email = "agrospai@udl.cat" },
     { name = "Christian López", email = "christian.lopez@udl.cat" },
 ]
 requires-python = ">=3.10"
