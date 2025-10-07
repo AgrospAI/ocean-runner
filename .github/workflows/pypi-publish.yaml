@@ -45,7 +45,7 @@ jobs:
         working-directory: .
         run: |
           source .venv/bin/activate
-          bump-my-version bump minor --allow-dirty --file pyproject.toml
+          bump-my-version bump minor --allow-dirty
           NEW_VERSION=$(bump-my-version show current_version)
           echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
 
