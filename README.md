@@ -3,6 +3,14 @@
 Ocean Runner is a package that brings a fluent API for APP creation and running in the scope of OceanProtocol.
 
 
+## Installation
+
+```bash
+pip install ocean-runner
+# or
+uv add ocean-runner
+```
+
 ## Usage
 
 ### Minimal Example
@@ -102,6 +110,11 @@ Algorithm(
             secret: "1234",
             """
             Random secret to use while testing.
+            """
+
+            runtime: "dev",
+            """
+            Runtime mode. "dev" to run normally, "test" to run pytest
             """
         )
         """
