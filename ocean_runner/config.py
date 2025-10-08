@@ -31,11 +31,6 @@ class Environment:
     )
     """Super secret secret"""
 
-    runtime: Literal["dev", "test"] = field(
-        default_factory=lambda: os.environ.get("RUNTIME", "dev").lower()
-    )
-    """Select runtime mode"""
-
     dict = asdict
 
 

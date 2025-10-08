@@ -111,11 +111,6 @@ Algorithm(
             """
             Random secret to use while testing.
             """
-
-            runtime: "dev",
-            """
-            Runtime mode. "dev" to run normally, "test" to run pytest
-            """
         )
         """
         Should not be needed in production algorithms, used to mock environment variables, defaults to using env.
@@ -174,4 +169,3 @@ Environment variables:
 - `TRANSFORMATION_DID` Algorithm DID, must have format: `abc..90`
 - `SECRET` Algorithm secret.
 - `BASE_DIR` (optional, default="/data"): Base path to the OceanProtocol data directories.
-- `RUNTIME` (optional, default="dev"): Runtime mode

@@ -13,7 +13,6 @@ def config():
             secret="1234",
             dids='["17feb697190d9f5912e064307006c06019c766d35e4e3f239ebb69fb71096e42"]',
             transformation_did="1234",
-            runtime="test",
         )
     )
 
