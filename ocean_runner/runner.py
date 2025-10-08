@@ -125,10 +125,10 @@ class Algorithm(Generic[JobDetailsT, ResultT]):
 
         return self
 
-    def run(self, callable: Callable[[Self], ResultT]) -> Self:
+    def run(self, callable: Callable[[Self], ResultT], is_check_test=True) -> Self:
         self.logger.info("Running algorithm...")
         try:
-            if self._runtime == RuntimeMode.TEST:
+            if is_check_test and self._runtime == RuntimeMode.TEST:
                 callable = default_test_run
 
             self._result = callable(self)
