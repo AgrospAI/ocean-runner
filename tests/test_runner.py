@@ -1,16 +1,8 @@
-import tempfile
 from pathlib import Path
+
 from pytest import fixture, raises
 
 from ocean_runner import Algorithm, Config, Environment
-from ocean_runner.runtime_mode import RuntimeMode
-
-
-@fixture(scope="session", autouse=True)
-def logger():
-    from logging import getLogger
-
-    yield getLogger(__name__)
 
 
 @fixture(scope="session", autouse=True)
@@ -21,17 +13,16 @@ def config():
             secret="1234",
             dids='["17feb697190d9f5912e064307006c06019c766d35e4e3f239ebb69fb71096e42"]',
             transformation_did="1234",
+            runtime="test",
         )
     )
 
 
 @fixture(scope="session", autouse=True)
-def algorithm(logger, config):
+def algorithm(config):
     algorithm = Algorithm(config)
 
     yield algorithm
-
-    logger.info("Ending session")
 
 
 def test_validation(algorithm):
@@ -49,33 +40,27 @@ def test_validation(algorithm):
 
 
 def test_run(algorithm):
-    def run(algorithm: Algorithm) -> int:
-        algorithm.logger.info("algorithmlication running...")
+    def run(_) -> int:
         return 123
 
-    algorithm.run(run)
+    assert algorithm.run(run) is not None
 
 
-def test_result(algorithm):
-    def save_results(results: int, **kwargs) -> None:
+def test_result(algorithm, tmp_path):
+    result_file = tmp_path / "results.txt"
+
+    def save_results(results: int, base_path: Path, **kwargs) -> None:
         assert results is not None, "Missing results"
         assert results == 123
 
-    algorithm.save_results(save_results)
+        with open(base_path, "w+") as f:
+            f.write(str(results))
 
+    algorithm.save_results(save_results, override_path=result_file)
 
-def test_result_into_file(algorithm):
-    def save_results(results: int, base_path: Path, **kwargs) -> None:
-        base_path.mkdir(exist_ok=True, parents=True)
-
-        with tempfile.TemporaryFile(dir=base_path, mode="w+") as tf:
-            tf.write(str(results))
-            tf.seek(0)
-
-            content = tf.read()
-            assert content == "123"
-
-    algorithm.save_results(save_results)
+    assert result_file.exists(), "results.txt was not created"
+    with open(result_file, "r") as f:
+        assert f.read() == "123"
 
 
 def test_exception(algorithm):
@@ -102,15 +87,3 @@ def test_error_callback(config):
     Algorithm(config).run(lambda algorithm: algorithm.WILL_RAISE)
 
     assert count == 1, "Provided callback was not called"
-
-
-def test_runtime_dev(config):
-
-    config.environment.runtime = "dev"
-
-    assert Algorithm(config)._runtime is RuntimeMode.DEV
-
-
-def test_runtime_test(config):
-    config.environment.runtime = "test"
-    assert Algorithm(config)._runtime is RuntimeMode.TEST

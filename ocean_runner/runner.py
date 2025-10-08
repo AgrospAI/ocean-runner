@@ -8,7 +8,6 @@ from typing import Callable, Generic, Self, TypeVar
 from oceanprotocol_job_details import JobDetails
 
 from ocean_runner.config import Config
-from ocean_runner.runtime_mode import RuntimeMode
 
 JobDetailsT = TypeVar(
     "JobDetailsT",
@@ -34,19 +33,6 @@ def default_save(*, result: ResultT, base: Path, algorithm: Algorithm) -> None:
         f.write(str(result))
 
 
-def default_test_run(algorithm: Algorithm) -> int:
-    import pytest
-
-    result = pytest.main()
-
-    if result == 0:
-        algorithm.logger.info("Passed all tests")
-    else:
-        algorithm.logger.error("Some tests failed")
-
-    return result
-
-
 @dataclass
 class Algorithm(Generic[JobDetailsT, ResultT]):
 
@@ -57,7 +43,6 @@ class Algorithm(Generic[JobDetailsT, ResultT]):
 
     _job_details: JobDetails[JobDetailsT] = field(init=False)
     _result: ResultT | None = field(default=None, init=False)
-    _runtime: RuntimeMode = field(default=RuntimeMode.DEV, init=False)
 
     error_callback = default_error_callback
 
@@ -89,8 +74,6 @@ class Algorithm(Generic[JobDetailsT, ResultT]):
             sys.path.extend([str(path.absolute()) for path in config.source_paths])
             self.logger.debug(f"Added [{len(config.source_paths)}] entries to PATH")
 
-        self._runtime = RuntimeMode(config.environment.runtime) or self._runtime
-
         self._job_details = JobDetails.load(
             _type=config.custom_input,
             base_dir=config.environment.base_dir,
@@ -116,7 +99,10 @@ class Algorithm(Generic[JobDetailsT, ResultT]):
             raise Algorithm.Error("Result missing, run the algorithm first")
         return self._result
 
-    def validate(self, callback: Callable[[Self], None] = default_validation) -> Self:
+    def validate(
+        self,
+        callback: Callable[[Self], None] = default_validation,
+    ) -> Self:
         self.logger.info("Validating instance...")
         try:
             callback(self)
@@ -125,12 +111,12 @@ class Algorithm(Generic[JobDetailsT, ResultT]):
 
         return self
 
-    def run(self, callable: Callable[[Self], ResultT], is_check_test=True) -> Self:
+    def run(
+        self,
+        callable: Callable[[Self], ResultT],
+    ) -> Self:
         self.logger.info("Running algorithm...")
         try:
-            if is_check_test and self._runtime == RuntimeMode.TEST:
-                callable = default_test_run
-
             self._result = callable(self)
         except Exception as e:
             self.error_callback(e)
