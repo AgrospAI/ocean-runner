@@ -140,12 +140,14 @@ class Algorithm(Generic[JobDetailsT, ResultT]):
     def save_results(
         self,
         callable: Callable[[ResultT, Path, Algorithm], None] = default_save,
+        *,
+        override_path: Path | None = None,
     ) -> None:
         self.logger.info("Saving results...")
         try:
             callable(
                 results=self.result,
-                base_path=self.job_details.paths.outputs,
+                base_path=override_path or self.job_details.paths.outputs,
                 algorithm=self,
             )
         except Exception as e:
