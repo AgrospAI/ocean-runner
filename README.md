@@ -170,8 +170,9 @@ As seen in the minimal example, all methods implemented in `Algorithm` have a de
 To load the OceanProtocol JobDetails instance, the program will read some environment variables, they can be mocked passing an instance of `Environment` through the configuration of the algorithm.
 
 Environment variables:
-- *DIDS*: Input dataset(s) DID's.
-- *TRANSFORMATION_DID*: Algorithm DID.
-- *SECRET*: Algorithm secret.
-- *BASE_DIR* (optional, default='/data'): Base path to the OceanProtocol data directories.
+- `DIDS` Input dataset(s) DID's, must have format: `["abc..90"]`
+- `TRANSFORMATION_DID` Algorithm DID, must have format: `abc..90`
+- `SECRET` Algorithm secret.
+- `BASE_DIR` (optional, default="/data"): Base path to the OceanProtocol data directories.
+- `RUNTIME` (optional, default="dev"): Runtime mode
 
