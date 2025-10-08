@@ -175,4 +175,3 @@ Environment variables:
 - `SECRET` Algorithm secret.
 - `BASE_DIR` (optional, default="/data"): Base path to the OceanProtocol data directories.
 - `RUNTIME` (optional, default="dev"): Runtime mode
-
