@@ -1,27 +1,40 @@
+import os
 from dataclasses import asdict, dataclass, field
 from logging import Logger
-import os
 from pathlib import Path
-from typing import Callable, Iterable, TypeVar
+from typing import Callable, Iterable, Literal, TypeVar
 
 T = TypeVar("T")
 
 
-@dataclass(frozen=True)
+@dataclass
 class Environment:
     """Environment variables mock"""
 
-    base_dir: str | None = field(default=os.environ.get("BASE_DIR", None))
+    base_dir: str | None = field(
+        default_factory=lambda: os.environ.get("BASE_DIR", None),
+    )
     """Base data directory, defaults to '/data'"""
 
-    dids: str = field(default=os.environ.get("DIDS"))
+    dids: str = field(
+        default_factory=lambda: os.environ.get("DIDS"),
+    )
     """Datasets DID's, format: '["XXXX"]'"""
 
-    transformation_did: str = field(default=os.environ.get("TRANSFORMATION_DID"))
+    transformation_did: str = field(
+        default_factory=lambda: os.environ.get("TRANSFORMATION_DID"),
+    )
     """Transformation (algorithm) DID"""
 
-    secret: str = field(default=os.environ.get("SECRET"))
+    secret: str = field(
+        default_factory=lambda: os.environ.get("SECRET"),
+    )
     """Super secret secret"""
+
+    runtime: Literal["dev", "test"] = field(
+        default_factory=lambda: os.environ.get("RUNTIME", "dev").lower()
+    )
+    """Select runtime mode"""
 
     dict = asdict
 
@@ -44,5 +57,7 @@ class Config:
     )
     """Paths that should be included so the code executes correctly"""
 
-    environment: Environment = Environment()
+    environment: Environment = field(
+        default_factory=lambda: Environment(),
+    )
     """Mock of environment data"""

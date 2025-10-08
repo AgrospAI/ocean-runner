@@ -1,21 +1,21 @@
 import tempfile
-from logging import getLogger
 from pathlib import Path
-
 from pytest import fixture, raises
 
 from ocean_runner import Algorithm, Config, Environment
-
-logger = getLogger(__name__)
-
-
-# Algorithm().run(lambda _: random.randint()).save_results()
-
-algorithm: Algorithm
+from ocean_runner.runtime_mode import RuntimeMode
 
 
-def config() -> Config:
-    return Config(
+@fixture(scope="session", autouse=True)
+def logger():
+    from logging import getLogger
+
+    yield getLogger(__name__)
+
+
+@fixture(scope="session", autouse=True)
+def config():
+    yield Config(
         environment=Environment(
             base_dir=Path("./_data"),
             secret="1234",
@@ -26,25 +26,15 @@ def config() -> Config:
 
 
 @fixture(scope="session", autouse=True)
-def setup():
+def algorithm(logger, config):
+    algorithm = Algorithm(config)
 
-    global algorithm
-
-    algorithm = Algorithm(config=config())
-
-    yield
+    yield algorithm
 
     logger.info("Ending session")
 
 
-def test_validation():
-
-    global algorithm
-
-    # def validate(algorithm: Algorithm):
-    #     assert algorithm.job_details.ddos, "Missing DDOs"
-    #     assert algorithm.job_details.files, "Missing Files"
-
+def test_validation(algorithm):
     def raise_error(msg: str):
         raise RuntimeError(msg)
 
@@ -58,10 +48,7 @@ def test_validation():
     )
 
 
-def test_run():
-
-    global algorithm
-
+def test_run(algorithm):
     def run(algorithm: Algorithm) -> int:
         algorithm.logger.info("algorithmlication running...")
         return 123
@@ -69,10 +56,7 @@ def test_run():
     algorithm.run(run)
 
 
-def test_result():
-
-    global algorithm
-
+def test_result(algorithm):
     def save_results(results: int, **kwargs) -> None:
         assert results is not None, "Missing results"
         assert results == 123
@@ -80,10 +64,7 @@ def test_result():
     algorithm.save_results(save_results)
 
 
-def test_result_into_file():
-
-    global algorithm
-
+def test_result_into_file(algorithm):
     def save_results(results: int, base_path: Path, **kwargs) -> None:
         base_path.mkdir(exist_ok=True, parents=True)
 
@@ -97,10 +78,7 @@ def test_result_into_file():
     algorithm.save_results(save_results)
 
 
-def test_exception():
-
-    global algorithm
-
+def test_exception(algorithm):
     CustomException = RuntimeError
 
     with raises(CustomException):
@@ -111,7 +89,7 @@ def test_exception():
         algorithm.run(run)
 
 
-def test_error_callback():
+def test_error_callback(config):
 
     count = 0
 
@@ -119,9 +97,20 @@ def test_error_callback():
         nonlocal count
         count += 1
 
-    conf = config()
-    conf.error_callback = callback
+    config.error_callback = callback
 
-    Algorithm(conf).run(lambda algorithm: algorithm.WILL_RAISE)
+    Algorithm(config).run(lambda algorithm: algorithm.WILL_RAISE)
 
     assert count == 1, "Provided callback was not called"
+
+
+def test_runtime_dev(config):
+
+    config.environment.runtime = "dev"
+
+    assert Algorithm(config)._runtime is RuntimeMode.DEV
+
+
+def test_runtime_test(config):
+    config.environment.runtime = "test"
+    assert Algorithm(config)._runtime is RuntimeMode.TEST
