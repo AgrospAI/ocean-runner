@@ -95,7 +95,7 @@ class Algorithm(Generic[JobDetailsT, ResultT]):
 
     @property
     def result(self) -> ResultT:
-        if not self._result:
+        if self._result is None:
             raise Algorithm.Error("Result missing, run the algorithm first")
         return self._result
 

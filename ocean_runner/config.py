@@ -2,7 +2,7 @@ import os
 from dataclasses import asdict, dataclass, field
 from logging import Logger
 from pathlib import Path
-from typing import Callable, Iterable, Literal, TypeVar
+from typing import Callable, Iterable, TypeVar
 
 T = TypeVar("T")
 
