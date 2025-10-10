@@ -15,7 +15,7 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
 ]
 dependencies = [
-    "oceanprotocol-job-details==0.2.6",
+    "oceanprotocol-job-details>=0.2.7",
     "pytest>=8.4.2",
 ]
 

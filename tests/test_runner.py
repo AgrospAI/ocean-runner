@@ -10,9 +10,6 @@ def config():
     yield Config(
         environment=Environment(
             base_dir=Path("./_data"),
-            secret="1234",
-            dids='["17feb697190d9f5912e064307006c06019c766d35e4e3f239ebb69fb71096e42"]',
-            transformation_did="1234",
         )
     )
 
@@ -74,7 +71,6 @@ def test_exception(algorithm):
 
 
 def test_error_callback(config):
-
     count = 0
 
     def callback(_):

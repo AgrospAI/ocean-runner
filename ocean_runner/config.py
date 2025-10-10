@@ -6,6 +6,8 @@ from typing import Callable, Iterable, TypeVar
 
 T = TypeVar("T")
 
+DEFAULT = "DEFAULT"
+
 
 @dataclass
 class Environment:
@@ -17,17 +19,17 @@ class Environment:
     """Base data directory, defaults to '/data'"""
 
     dids: str = field(
-        default_factory=lambda: os.environ.get("DIDS"),
+        default_factory=lambda: os.environ.get("DIDS", None),
     )
     """Datasets DID's, format: '["XXXX"]'"""
 
     transformation_did: str = field(
-        default_factory=lambda: os.environ.get("TRANSFORMATION_DID"),
+        default_factory=lambda: os.environ.get("TRANSFORMATION_DID", DEFAULT),
     )
     """Transformation (algorithm) DID"""
 
     secret: str = field(
-        default_factory=lambda: os.environ.get("SECRET"),
+        default_factory=lambda: os.environ.get("SECRET", DEFAULT),
     )
     """Super secret secret"""
 
