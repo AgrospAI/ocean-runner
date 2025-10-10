@@ -7,11 +7,7 @@ from ocean_runner import Algorithm, Config, Environment
 
 @fixture(scope="session", autouse=True)
 def config():
-    yield Config(
-        environment=Environment(
-            base_dir=Path("./_data"),
-        )
-    )
+    yield Config(environment=Environment(base_dir=Path("./_data")))
 
 
 @fixture(scope="session", autouse=True)
@@ -19,64 +15,59 @@ def algorithm(config):
     yield Algorithm(config)
 
 
-def test_validation(algorithm):
-    def raise_error(msg: str):
-        raise RuntimeError(msg)
+@fixture(scope="session", autouse=True)
+def setup_algorithm(algorithm):
 
-    algorithm.validate(
-        lambda algorithm: all(
-            (
-                algorithm.job_details.ddos or raise_error("Missing DDOs"),
-                algorithm.job_details.ddos or raise_error("Missing DDOs"),
-            )
-        )
-    )
+    @algorithm.validate
+    def validate(algorithm: Algorithm):
+        assert algorithm.job_details.ddos, "Missing DDOs"
+        assert algorithm.job_details.files, "Missing Files"
 
-
-def test_run(algorithm):
+    @algorithm.run
     def run(_) -> int:
         return 123
 
-    assert algorithm.run(run) is not None
+    yield algorithm
 
 
-def test_result(algorithm, tmp_path):
+def test_result(setup_algorithm, tmp_path):
     result_file = tmp_path / "results.txt"
 
-    def save_results(result: int, base: Path, **kwargs) -> None:
+    @setup_algorithm.save_results
+    def save_results(result: int, *args, **kwargs) -> None:
         assert result is not None, "Missing result"
         assert result == 123
 
-        with open(base, "w+") as f:
+        with open(result_file, "w+") as f:
             f.write(str(result))
 
-    algorithm.save_results(save_results, override_path=result_file)
+    setup_algorithm()
 
     assert result_file.exists(), "results.txt was not created"
     with open(result_file, "r") as f:
         assert f.read() == "123"
 
 
-def test_exception(algorithm):
-    CustomException = RuntimeError
+def test_exception(setup_algorithm):
+    @setup_algorithm.run
+    def run(_):
+        raise Algorithm.Error()
 
-    with raises(CustomException):
-
-        def run(_):
-            raise CustomException()
-
-        algorithm.run(run)
+    with raises(Algorithm.Error):
+        setup_algorithm()
 
 
-def test_error_callback(config):
+def test_error_callback(setup_algorithm):
     count = 0
 
-    def callback(_):
+    @setup_algorithm.on_error
+    def callback(*args, **kwargs):
         nonlocal count
         count += 1
 
-    config.error_callback = callback
+    @setup_algorithm.run
+    def run():
+        raise Algorithm.Error()
 
-    Algorithm(config).run(lambda algorithm: algorithm.WILL_RAISE)
-
+    setup_algorithm()
     assert count == 1, "Provided callback was not called"

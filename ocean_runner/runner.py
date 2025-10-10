@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import inspect
 from dataclasses import InitVar, asdict, dataclass, field
 from logging import Logger
 from pathlib import Path
@@ -14,7 +13,7 @@ JobDetailsT = TypeVar("JobDetailsT")
 ResultT = TypeVar("ResultT")
 
 
-def default_error_callback(_: Algorithm, e: Exception) -> None:
+def default_error_callback(_, e: Exception) -> None:
     raise e
 
 
@@ -32,28 +31,30 @@ def default_save(*, result: ResultT, base: Path, algorithm: Algorithm) -> None:
 
 @dataclass
 class Algorithm(Generic[JobDetailsT, ResultT]):
+    """
+    A configurable algorithm runner that behaves like a FastAPI app:
+      - You register `validate`, `run`, and `save_results` via decorators.
+      - You execute the full pipeline by calling `app()`.
+    """
 
     config: InitVar[Config | None] = None
     logger: Logger = field(init=False)
     _job_details: JobDetails[JobDetailsT] = field(init=False)
     _result: ResultT | None = field(default=None, init=False)
-    error_callback = default_error_callback
+
+    error_callback: Callable[[Algorithm, Exception], None] = default_error_callback
+
+    # Decorator-registered callbacks
+    _validate_fn: Callable[[Algorithm], None] | None = field(default=None, init=False)
+    _run_fn: Callable[[Algorithm], ResultT] | None = field(default=None, init=False)
+    _save_fn: Callable[[ResultT, Path, Algorithm], None] | None = field(
+        default=None, init=False
+    )
 
     def __post_init__(self, config: Config | None) -> None:
         config: Config = config or Config()
-        if config.error_callback:
-            self.error_callback = config.error_callback
 
-        self._setup_logger(config)
-        self._load_job_details(config)
-        self._load_user_defined_functions()
-        self._maybe_autorun(config)
-
-    # ---------------------
-    # Setup helpers
-    # ---------------------
-
-    def _setup_logger(self, config: Config) -> None:
+        # Configure logger
         if config.logger:
             self.logger = config.logger
         else:
@@ -66,15 +67,18 @@ class Algorithm(Generic[JobDetailsT, ResultT]):
             )
             self.logger = logging.getLogger("ocean_runner")
 
-    def _load_job_details(self, config: Config) -> None:
+        # Normalize base_dir
         if isinstance(config.environment.base_dir, str):
             config.environment.base_dir = Path(config.environment.base_dir)
+
+        # Extend sys.path for custom imports
         if config.source_paths:
             import sys
 
             sys.path.extend([str(path.absolute()) for path in config.source_paths])
             self.logger.debug(f"Added [{len(config.source_paths)}] entries to PATH")
 
+        # Load job details
         self._job_details = JobDetails.load(
             _type=config.custom_input,
             base_dir=config.environment.base_dir,
@@ -82,49 +86,13 @@ class Algorithm(Generic[JobDetailsT, ResultT]):
             transformation_did=config.environment.transformation_did,
             secret=config.environment.secret,
         )
+
         self.logger.info("Loaded JobDetails")
         self.logger.debug(asdict(self.job_details))
 
-    # ---------------------
-    # Auto-detect functions
-    # ---------------------
+        self.config = config
 
-    def _load_user_defined_functions(self) -> None:
-        caller = inspect.getmodule(inspect.stack()[2][0])
-        if not caller:
-            return
-
-        for name, default in {
-            "validation": default_validation,
-            "run": None,
-            "save": default_save,
-        }.items():
-            fn = getattr(caller, name, None)
-            if callable(fn):
-                self.logger.debug(f"Found user-defined '{name}' function")
-                setattr(self, f"_user_{name}", fn)
-            elif default:
-                setattr(self, f"_user_{name}", default)
-
-        self._caller_module = caller
-
-    # ---------------------
-    # Auto-run logic
-    # ---------------------
-
-    def _maybe_autorun(self, config) -> None:
-        """Automatically runs if caller has __ocean_runner_autorun__ = True"""
-        if (
-            getattr(self, "_caller_module", None)
-            and getattr(self._caller_module, "__ocean_runner_autorun__", False)
-            and not getattr(config, "_from_test", False)
-        ):
-            self.logger.info("Auto-running algorithm...")
-            self.validate().run().save_results()
-
-    # ---------------------
-    # Main API
-    # ---------------------
+    class Error(RuntimeError): ...
 
     @property
     def job_details(self) -> JobDetails:
@@ -138,41 +106,67 @@ class Algorithm(Generic[JobDetailsT, ResultT]):
             raise Algorithm.Error("Result missing, run the algorithm first")
         return self._result
 
-    def validate(self, callback: Callable[[Self], None] | None = None) -> Self:
-        callback = callback or getattr(self, "_user_validation", default_validation)
-        self.logger.info("Validating instance...")
-        try:
-            callback(self)
-        except Exception as e:
-            self.error_callback(e)
-        return self
+    # ---------------------------
+    # Decorators (FastAPI-style)
+    # ---------------------------
 
-    def run(self, callback: Callable[[Self], ResultT] | None = None) -> Self:
-        callback = callback or getattr(self, "_user_run", None)
-        if callback is None:
-            raise Algorithm.Error("No 'run' function found")
-        self.logger.info("Running algorithm...")
-        try:
-            self._result = callback(self)
-        except Exception as e:
-            self.error_callback(e)
-        return self
+    def validate(self, fn: Callable[[Self], None]) -> Callable[[Self], None]:
+        self._validate_fn = fn
+        return fn
 
-    def save_results(
-        self,
-        callback: Callable[[ResultT, Path, Algorithm], None] | None = None,
-        *,
-        override_path: Path | None = None,
-    ) -> None:
-        callback = callback or getattr(self, "_user_save", default_save)
-        self.logger.info("Saving results...")
-        try:
-            callback(
-                result=self.result,
-                base=override_path or self.job_details.paths.outputs,
-                algorithm=self,
-            )
-        except Exception as e:
-            self.error_callback(e)
+    def run(self, fn: Callable[[Self], ResultT]) -> Callable[[Self], ResultT]:
+        self._run_fn = fn
+        return fn
 
-    class Error(RuntimeError): ...
+    def save_results(self, fn: Callable[[ResultT, Path, Algorithm], None]) -> Callable:
+        self._save_fn = fn
+        return fn
+
+    def on_error(self, fn: Callable[[Algorithm, Exception], None]) -> Callable:
+        self.error_callback = fn
+        return fn
+
+    # ---------------------------
+    # Execution Pipeline
+    # ---------------------------
+
+    def __call__(self) -> ResultT | None:
+        """Executes the algorithm pipeline: validate → run → save_results."""
+        try:
+            # Validation step
+            if self._validate_fn:
+                self.logger.info("Running custom validation...")
+                self._validate_fn(self)
+            else:
+                self.logger.info("Running default validation...")
+                default_validation(self)
+
+            # Run step
+            if self._run_fn:
+                self.logger.info("Running algorithm...")
+                self._result = self._run_fn(self)
+            else:
+                self.logger.warning("No run() function defined. Skipping execution.")
+                self._result = None
+
+            # Save step
+            if self._save_fn:
+                self.logger.info("Saving results...")
+                self._save_fn(
+                    self._result,
+                    self.job_details.paths.outputs,
+                    self,
+                )
+            else:
+                self.logger.info("No save_results() defined. Using default.")
+                default_save(
+                    result=self._result,
+                    base=self.job_details.paths.outputs,
+                    algorithm=self,
+                )
+
+        except Exception as e:
+            self.logger.exception("Error during algorithm execution")
+            self.error_callback(self, e)
+
+        return self._result

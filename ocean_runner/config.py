@@ -2,7 +2,7 @@ import os
 from dataclasses import asdict, dataclass, field
 from logging import Logger
 from pathlib import Path
-from typing import Callable, Iterable, TypeVar
+from typing import Iterable, TypeVar
 
 T = TypeVar("T")
 
@@ -43,9 +43,6 @@ class Config:
     custom_input: T | None = None
     """Algorithm's custom input types, must be a dataclass_json"""
 
-    error_callback: Callable[[Exception], None] = None
-    """Callback to execute upon exceptions"""
-
     logger: Logger | None = None
     """Logger to use in the algorithm"""
 
@@ -54,7 +51,5 @@ class Config:
     )
     """Paths that should be included so the code executes correctly"""
 
-    environment: Environment = field(
-        default_factory=lambda: Environment(),
-    )
+    environment: Environment = field(default_factory=lambda: Environment())
     """Mock of environment data"""
