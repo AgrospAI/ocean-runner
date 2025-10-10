@@ -16,9 +16,7 @@ def config():
 
 @fixture(scope="session", autouse=True)
 def algorithm(config):
-    algorithm = Algorithm(config)
-
-    yield algorithm
+    yield Algorithm(config)
 
 
 def test_validation(algorithm):
@@ -45,12 +43,12 @@ def test_run(algorithm):
 def test_result(algorithm, tmp_path):
     result_file = tmp_path / "results.txt"
 
-    def save_results(results: int, base_path: Path, **kwargs) -> None:
-        assert results is not None, "Missing results"
-        assert results == 123
+    def save_results(result: int, base: Path, **kwargs) -> None:
+        assert result is not None, "Missing result"
+        assert result == 123
 
-        with open(base_path, "w+") as f:
-            f.write(str(results))
+        with open(base, "w+") as f:
+            f.write(str(result))
 
     algorithm.save_results(save_results, override_path=result_file)
 
