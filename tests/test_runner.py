@@ -19,12 +19,12 @@ def algorithm(config):
 def setup_algorithm(algorithm):
 
     @algorithm.validate
-    def validate(algorithm: Algorithm):
+    def validate():
         assert algorithm.job_details.ddos, "Missing DDOs"
         assert algorithm.job_details.files, "Missing Files"
 
     @algorithm.run
-    def run(_) -> int:
+    def run() -> int:
         return 123
 
     yield algorithm
@@ -34,7 +34,7 @@ def test_result(setup_algorithm, tmp_path):
     result_file = tmp_path / "results.txt"
 
     @setup_algorithm.save_results
-    def save_results(result: int, *args, **kwargs) -> None:
+    def save_results(result: int, *args) -> None:
         assert result is not None, "Missing result"
         assert result == 123
 
@@ -50,7 +50,7 @@ def test_result(setup_algorithm, tmp_path):
 
 def test_exception(setup_algorithm):
     @setup_algorithm.run
-    def run(_):
+    def run():
         raise Algorithm.Error()
 
     with raises(Algorithm.Error):
@@ -61,7 +61,7 @@ def test_error_callback(setup_algorithm):
     count = 0
 
     @setup_algorithm.on_error
-    def callback(*args, **kwargs):
+    def callback(_):
         nonlocal count
         count += 1
 

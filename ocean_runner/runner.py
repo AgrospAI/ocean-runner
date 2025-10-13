@@ -140,7 +140,7 @@ class Algorithm(Generic[JobDetailsT, ResultT]):
                 self._validate_fn()
             else:
                 self.logger.info("Running default validation...")
-                default_validation(self)
+                self.default_validation(self)
 
             # Run step
             if self._run_fn:
@@ -167,6 +167,6 @@ class Algorithm(Generic[JobDetailsT, ResultT]):
 
         except Exception as e:
             self.logger.exception("Error during algorithm execution")
-            self._error_callback(self, e)
+            self._error_callback(e)
 
         return self._result
