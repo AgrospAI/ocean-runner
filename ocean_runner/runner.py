@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import InitVar, asdict, dataclass, field
 from logging import Logger
 from pathlib import Path
-from typing import Callable, Generic, Self, TypeVar
+from typing import Callable, Generic, TypeVar
 
 from oceanprotocol_job_details import JobDetails
 
@@ -42,13 +42,14 @@ class Algorithm(Generic[JobDetailsT, ResultT]):
     _job_details: JobDetails[JobDetailsT] = field(init=False)
     _result: ResultT | None = field(default=None, init=False)
 
-    error_callback: Callable[[Algorithm, Exception], None] = default_error_callback
-
     # Decorator-registered callbacks
     _validate_fn: Callable[[Algorithm], None] | None = field(default=None, init=False)
     _run_fn: Callable[[Algorithm], ResultT] | None = field(default=None, init=False)
     _save_fn: Callable[[ResultT, Path, Algorithm], None] | None = field(
         default=None, init=False
+    )
+    _error_callback: Callable[[Algorithm, Exception], None] = field(
+        default=default_error_callback, init=False
     )
 
     def __post_init__(self, config: Config | None) -> None:
@@ -110,20 +111,20 @@ class Algorithm(Generic[JobDetailsT, ResultT]):
     # Decorators (FastAPI-style)
     # ---------------------------
 
-    def validate(self, fn: Callable[[Self], None]) -> Callable[[Self], None]:
+    def validate(self, fn: Callable[[], None]) -> Callable[[], None]:
         self._validate_fn = fn
         return fn
 
-    def run(self, fn: Callable[[Self], ResultT]) -> Callable[[Self], ResultT]:
+    def run(self, fn: Callable[[], ResultT]) -> Callable[[], ResultT]:
         self._run_fn = fn
         return fn
 
-    def save_results(self, fn: Callable[[ResultT, Path, Algorithm], None]) -> Callable:
+    def save_results(self, fn: Callable[[ResultT, Path], None]) -> Callable:
         self._save_fn = fn
         return fn
 
-    def on_error(self, fn: Callable[[Algorithm, Exception], None]) -> Callable:
-        self.error_callback = fn
+    def on_error(self, fn: Callable[[Exception], None]) -> Callable:
+        self._error_callback = fn
         return fn
 
     # ---------------------------
@@ -136,7 +137,7 @@ class Algorithm(Generic[JobDetailsT, ResultT]):
             # Validation step
             if self._validate_fn:
                 self.logger.info("Running custom validation...")
-                self._validate_fn(self)
+                self._validate_fn()
             else:
                 self.logger.info("Running default validation...")
                 default_validation(self)
@@ -144,7 +145,7 @@ class Algorithm(Generic[JobDetailsT, ResultT]):
             # Run step
             if self._run_fn:
                 self.logger.info("Running algorithm...")
-                self._result = self._run_fn(self)
+                self._result = self._run_fn()
             else:
                 self.logger.warning("No run() function defined. Skipping execution.")
                 self._result = None
@@ -155,7 +156,6 @@ class Algorithm(Generic[JobDetailsT, ResultT]):
                 self._save_fn(
                     self._result,
                     self.job_details.paths.outputs,
-                    self,
                 )
             else:
                 self.logger.info("No save_results() defined. Using default.")
@@ -167,6 +167,6 @@ class Algorithm(Generic[JobDetailsT, ResultT]):
 
         except Exception as e:
             self.logger.exception("Error during algorithm execution")
-            self.error_callback(self, e)
+            self._error_callback(self, e)
 
         return self._result
