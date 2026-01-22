@@ -14,16 +14,15 @@ classifiers = [
     "Operating System :: OS Independent",
     "License :: OSI Approved :: MIT License",
 ]
-dependencies = [
-    "oceanprotocol-job-details>=0.2.7",
-    "pytest>=8.4.2",
-]
+dependencies = ["oceanprotocol-job-details>=0.2.8", "pytest>=8.4.2"]
 
 [project.urls]
 Homepage = "https://github.com/AgrospAI/ocean-runner"
 Issues = "https://github.com/AgrospAI/ocean-runner/issues"
 
 [tool.pytest.ini_options]
+log_level = "DEBUG"
+log_cli = true
 pythonpath = "ocean_runner"
 
 [build-system]

@@ -13,7 +13,8 @@ JobDetailsT = TypeVar("JobDetailsT")
 ResultT = TypeVar("ResultT")
 
 
-def default_error_callback(_, e: Exception) -> None:
+def default_error_callback(algorithm: Algorithm, e: Exception) -> None:
+    algorithm.logger.exception("Error during algorithm execution")
     raise e
 
 
@@ -43,13 +44,28 @@ class Algorithm(Generic[JobDetailsT, ResultT]):
     _result: ResultT | None = field(default=None, init=False)
 
     # Decorator-registered callbacks
-    _validate_fn: Callable[[Algorithm], None] | None = field(default=None, init=False)
-    _run_fn: Callable[[Algorithm], ResultT] | None = field(default=None, init=False)
-    _save_fn: Callable[[ResultT, Path, Algorithm], None] | None = field(
-        default=None, init=False
+    _validate_fn: Callable[[Algorithm], None] | None = field(
+        default=None,
+        init=False,
+        repr=False,
     )
-    _error_callback: Callable[[Algorithm, Exception], None] = field(
-        default=default_error_callback, init=False
+
+    _run_fn: Callable[[Algorithm], ResultT] | None = field(
+        default=None,
+        init=False,
+        repr=False,
+    )
+
+    _save_fn: Callable[[ResultT, Path, Algorithm], None] | None = field(
+        default=None,
+        init=False,
+        repr=False,
+    )
+
+    _error_callback: Callable[[Algorithm, Exception], None] | None = field(
+        default=None,
+        init=False,
+        repr=False,
     )
 
     def __post_init__(self, config: Config | None) -> None:
@@ -166,7 +182,9 @@ class Algorithm(Generic[JobDetailsT, ResultT]):
                 )
 
         except Exception as e:
-            self.logger.exception("Error during algorithm execution")
-            self._error_callback(e)
+            if self._error_callback:
+                self._error_callback(e)
+            else:
+                default_error_callback(self, e)
 
         return self._result

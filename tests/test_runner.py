@@ -53,6 +53,10 @@ def test_exception(setup_algorithm):
     def run():
         raise Algorithm.Error()
 
+    @setup_algorithm.on_error
+    def callback(e):
+        raise e
+
     with raises(Algorithm.Error):
         setup_algorithm()
 
