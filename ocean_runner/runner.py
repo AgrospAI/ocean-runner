@@ -95,18 +95,6 @@ class Algorithm(Generic[JobDetailsT, ResultT]):
             sys.path.extend([str(path.absolute()) for path in config.source_paths])
             self.logger.debug(f"Added [{len(config.source_paths)}] entries to PATH")
 
-        # Load job details
-        self._job_details = JobDetails.load(
-            _type=config.custom_input,
-            base_dir=config.environment.base_dir,
-            dids=config.environment.dids,
-            transformation_did=config.environment.transformation_did,
-            secret=config.environment.secret,
-        )
-
-        self.logger.info("Loaded JobDetails")
-        self.logger.debug(asdict(self.job_details))
-
         self.config = config
 
     class Error(RuntimeError): ...
@@ -149,6 +137,18 @@ class Algorithm(Generic[JobDetailsT, ResultT]):
 
     def __call__(self) -> ResultT | None:
         """Executes the algorithm pipeline: validate → run → save_results."""
+        # Load job details
+        self._job_details = JobDetails.load(
+            _type=self.config.custom_input,
+            base_dir=self.config.environment.base_dir,
+            dids=self.config.environment.dids,
+            transformation_did=self.config.environment.transformation_did,
+            secret=self.config.environment.secret,
+        )
+
+        self.logger.info("Loaded JobDetails")
+        self.logger.debug(asdict(self.job_details))
+
         try:
             # Validation step
             if self._validate_fn:

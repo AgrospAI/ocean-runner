@@ -21,7 +21,7 @@ Homepage = "https://github.com/AgrospAI/ocean-runner"
 Issues = "https://github.com/AgrospAI/ocean-runner/issues"
 
 [tool.pytest.ini_options]
-log_level = "DEBUG"
+log_level = "INFO"
 log_cli = true
 pythonpath = "ocean_runner"
 
