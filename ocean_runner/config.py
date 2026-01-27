@@ -1,55 +1,71 @@
-import os
-from dataclasses import asdict, dataclass, field
+from enum import StrEnum, auto
 from logging import Logger
 from pathlib import Path
-from typing import Iterable, TypeVar
+from typing import Generic, Sequence, TypeVar
 
-T = TypeVar("T")
+from pydantic import BaseModel, ConfigDict, Field
+from pydantic_settings import BaseSettings
+
+InputT = TypeVar("InputT")
 
 DEFAULT = "DEFAULT"
 
 
-@dataclass
-class Environment:
-    """Environment variables mock"""
+class Keys(StrEnum):
+    SECRET = auto()
+    BASE_DIR = auto()
+    TRANSFORMATION_DID = auto()
+    DIDS = auto()
 
-    base_dir: str | None = field(
-        default_factory=lambda: os.environ.get("BASE_DIR", None),
+
+class Environment(BaseSettings):
+    """Environment configuration loaded from environment variables"""
+
+    base_dir: str | Path | None = Field(
+        default_factory=lambda: Path("/data"),
+        validation_alias=Keys.BASE_DIR.value,
+        description="Base data directory, defaults to '/data'",
     )
-    """Base data directory, defaults to '/data'"""
 
-    dids: str = field(
-        default_factory=lambda: os.environ.get("DIDS", None),
+    dids: str | list[Path] | None = Field(
+        default=None,
+        validation_alias=Keys.DIDS.value,
+        description='Datasets DID\'s, format: ["XXXX"]',
     )
-    """Datasets DID's, format: '["XXXX"]'"""
 
-    transformation_did: str = field(
-        default_factory=lambda: os.environ.get("TRANSFORMATION_DID", DEFAULT),
+    transformation_did: str = Field(
+        default=DEFAULT,
+        validation_alias=Keys.TRANSFORMATION_DID.value,
+        description="Transformation (algorithm) DID",
     )
-    """Transformation (algorithm) DID"""
 
-    secret: str = field(
-        default_factory=lambda: os.environ.get("SECRET", DEFAULT),
+    secret: str = Field(
+        default=DEFAULT,
+        validation_alias=Keys.SECRET.value,
+        description="Super secret secret",
     )
-    """Super secret secret"""
-
-    dict = asdict
 
 
-@dataclass
-class Config:
+class Config(BaseModel, Generic[InputT]):
     """Algorithm overall configuration"""
 
-    custom_input: T | None = None
-    """Algorithm's custom input types, must be a dataclass_json"""
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    logger: Logger | None = None
-    """Logger to use in the algorithm"""
-
-    source_paths: Iterable[Path] = field(
-        default_factory=lambda: [Path("/algorithm/src")]
+    custom_input: InputT | None = Field(
+        default=None,
+        description="Algorithm's custom input types, must be a dataclass_json",
     )
-    """Paths that should be included so the code executes correctly"""
 
-    environment: Environment = field(default_factory=lambda: Environment())
-    """Mock of environment data"""
+    logger: Logger | None = Field(
+        default=None,
+        description="Logger to use in the algorithm",
+    )
+
+    source_paths: Sequence[Path] = Field(
+        default_factory=lambda: [Path("/algorithm/src")],
+        description="Paths that should be included so the code executes correctly",
+    )
+
+    environment: Environment = Field(
+        default_factory=Environment, description="Environment configuration"
+    )

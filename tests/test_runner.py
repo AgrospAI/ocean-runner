@@ -17,24 +17,23 @@ def algorithm(config):
 
 @fixture(scope="session", autouse=True)
 def setup_algorithm(algorithm):
-
     @algorithm.validate
-    def validate():
+    def validate(algorithm: Algorithm):
         assert algorithm.job_details.ddos, "Missing DDOs"
         assert algorithm.job_details.files, "Missing Files"
 
     @algorithm.run
-    def run() -> int:
+    def run(_) -> int:
         return 123
 
     yield algorithm
 
 
-def test_result(setup_algorithm, tmp_path):
+def test_result(setup_algorithm: Algorithm, tmp_path):
     result_file = tmp_path / "results.txt"
 
     @setup_algorithm.save_results
-    def save_results(result: int, *args) -> None:
+    def save_results(_, result: int, *args) -> None:
         assert result is not None, "Missing result"
         assert result == 123
 
@@ -50,11 +49,11 @@ def test_result(setup_algorithm, tmp_path):
 
 def test_exception(setup_algorithm):
     @setup_algorithm.run
-    def run():
+    def run(_):
         raise Algorithm.Error()
 
     @setup_algorithm.on_error
-    def callback(e):
+    def callback(_, e):
         raise e
 
     with raises(Algorithm.Error):
@@ -65,12 +64,12 @@ def test_error_callback(setup_algorithm):
     count = 0
 
     @setup_algorithm.on_error
-    def callback(_):
+    def callback(_, __):
         nonlocal count
         count += 1
 
     @setup_algorithm.run
-    def run():
+    def run(_):
         raise Algorithm.Error()
 
     setup_algorithm()

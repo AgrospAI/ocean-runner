@@ -5,12 +5,17 @@ from logging import Logger
 from pathlib import Path
 from typing import Callable, Generic, TypeVar
 
-from oceanprotocol_job_details import JobDetails
+from oceanprotocol_job_details import JobDetails  # type: ignore
 
 from ocean_runner.config import Config
 
-JobDetailsT = TypeVar("JobDetailsT")
+InputT = TypeVar("InputT")
 ResultT = TypeVar("ResultT")
+
+ValidateFuncT = Callable[["Algorithm"], None]
+RunFuncT = Callable[["Algorithm"], ResultT] | None
+SaveFuncT = Callable[["Algorithm", ResultT, Path], None]
+ErrorFuncT = Callable[["Algorithm", Exception], None]
 
 
 def default_error_callback(algorithm: Algorithm, e: Exception) -> None:
@@ -24,56 +29,56 @@ def default_validation(algorithm: Algorithm) -> None:
     assert algorithm.job_details.files, "Files missing"
 
 
-def default_save(*, result: ResultT, base: Path, algorithm: Algorithm) -> None:
+def default_save(algorithm: Algorithm, result: ResultT, base: Path) -> None:
     algorithm.logger.info("Saving results using default save")
     with open(base / "result.txt", "w+") as f:
         f.write(str(result))
 
 
 @dataclass
-class Algorithm(Generic[JobDetailsT, ResultT]):
+class Algorithm(Generic[InputT, ResultT]):
     """
     A configurable algorithm runner that behaves like a FastAPI app:
       - You register `validate`, `run`, and `save_results` via decorators.
       - You execute the full pipeline by calling `app()`.
     """
 
-    config: InitVar[Config | None] = None
+    config: InitVar[Config[InputT] | None] = field(default=None)
     logger: Logger = field(init=False)
-    _job_details: JobDetails[JobDetailsT] = field(init=False)
+    _job_details: JobDetails[InputT] = field(init=False)
     _result: ResultT | None = field(default=None, init=False)
 
     # Decorator-registered callbacks
-    _validate_fn: Callable[[Algorithm], None] | None = field(
+    _validate_fn: ValidateFuncT = field(
+        default=default_validation,
+        init=False,
+        repr=False,
+    )
+
+    _run_fn: RunFuncT = field(
         default=None,
         init=False,
         repr=False,
     )
 
-    _run_fn: Callable[[Algorithm], ResultT] | None = field(
-        default=None,
+    _save_fn: SaveFuncT = field(
+        default=default_save,
         init=False,
         repr=False,
     )
 
-    _save_fn: Callable[[ResultT, Path, Algorithm], None] | None = field(
-        default=None,
+    _error_callback: ErrorFuncT = field(
+        default=default_error_callback,
         init=False,
         repr=False,
     )
 
-    _error_callback: Callable[[Algorithm, Exception], None] | None = field(
-        default=None,
-        init=False,
-        repr=False,
-    )
-
-    def __post_init__(self, config: Config | None) -> None:
-        config: Config = config or Config()
+    def __post_init__(self, config: Config[InputT] | None) -> None:
+        configuration = config or Config()
 
         # Configure logger
-        if config.logger:
-            self.logger = config.logger
+        if configuration.logger:
+            self.logger = configuration.logger
         else:
             import logging
 
@@ -82,20 +87,26 @@ class Algorithm(Generic[JobDetailsT, ResultT]):
                 format="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
                 datefmt="%Y-%m-%d %H:%M:%S",
             )
-            self.logger = logging.getLogger("ocean_runner")
+            self.logger = logging.getLogger(__name__)
 
         # Normalize base_dir
-        if isinstance(config.environment.base_dir, str):
-            config.environment.base_dir = Path(config.environment.base_dir)
+        if isinstance(configuration.environment.base_dir, str):
+            configuration.environment.base_dir = Path(
+                configuration.environment.base_dir
+            )
 
         # Extend sys.path for custom imports
-        if config.source_paths:
+        if configuration.source_paths:
             import sys
 
-            sys.path.extend([str(path.absolute()) for path in config.source_paths])
-            self.logger.debug(f"Added [{len(config.source_paths)}] entries to PATH")
+            sys.path.extend(
+                [str(path.absolute()) for path in configuration.source_paths]
+            )
+            self.logger.debug(
+                f"Added [{len(configuration.source_paths)}] entries to PATH"
+            )
 
-        self.config = config
+        self.configuration = configuration
 
     class Error(RuntimeError): ...
 
@@ -115,19 +126,19 @@ class Algorithm(Generic[JobDetailsT, ResultT]):
     # Decorators (FastAPI-style)
     # ---------------------------
 
-    def validate(self, fn: Callable[[], None]) -> Callable[[], None]:
+    def validate(self, fn: ValidateFuncT) -> ValidateFuncT:
         self._validate_fn = fn
         return fn
 
-    def run(self, fn: Callable[[], ResultT]) -> Callable[[], ResultT]:
+    def run(self, fn: RunFuncT) -> RunFuncT:
         self._run_fn = fn
         return fn
 
-    def save_results(self, fn: Callable[[ResultT, Path], None]) -> Callable:
+    def save_results(self, fn: SaveFuncT) -> SaveFuncT:
         self._save_fn = fn
         return fn
 
-    def on_error(self, fn: Callable[[Exception], None]) -> Callable:
+    def on_error(self, fn: ErrorFuncT) -> ErrorFuncT:
         self._error_callback = fn
         return fn
 
@@ -139,11 +150,11 @@ class Algorithm(Generic[JobDetailsT, ResultT]):
         """Executes the algorithm pipeline: validate → run → save_results."""
         # Load job details
         self._job_details = JobDetails.load(
-            _type=self.config.custom_input,
-            base_dir=self.config.environment.base_dir,
-            dids=self.config.environment.dids,
-            transformation_did=self.config.environment.transformation_did,
-            secret=self.config.environment.secret,
+            _type=self.configuration.custom_input,
+            base_dir=self.configuration.environment.base_dir,
+            dids=self.configuration.environment.dids,
+            transformation_did=self.configuration.environment.transformation_did,
+            secret=self.configuration.environment.secret,
         )
 
         self.logger.info("Loaded JobDetails")
@@ -151,40 +162,20 @@ class Algorithm(Generic[JobDetailsT, ResultT]):
 
         try:
             # Validation step
-            if self._validate_fn:
-                self.logger.info("Running custom validation...")
-                self._validate_fn()
-            else:
-                self.logger.info("Running default validation...")
-                default_validation(self)
+            self._validate_fn(self)
 
             # Run step
             if self._run_fn:
                 self.logger.info("Running algorithm...")
-                self._result = self._run_fn()
+                self._result = self._run_fn(self)
             else:
-                self.logger.warning("No run() function defined. Skipping execution.")
+                self.logger.error("No run() function defined. Skipping execution.")
                 self._result = None
 
             # Save step
-            if self._save_fn:
-                self.logger.info("Saving results...")
-                self._save_fn(
-                    self._result,
-                    self.job_details.paths.outputs,
-                )
-            else:
-                self.logger.info("No save_results() defined. Using default.")
-                default_save(
-                    result=self._result,
-                    base=self.job_details.paths.outputs,
-                    algorithm=self,
-                )
+            self._save_fn(self, self._result, self.job_details.paths.outputs)
 
         except Exception as e:
-            if self._error_callback:
-                self._error_callback(e)
-            else:
-                default_error_callback(self, e)
+            self._error_callback(self, e)
 
         return self._result
