@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import asyncio
+import inspect
 from dataclasses import InitVar, asdict, dataclass, field
 from logging import Logger
 from pathlib import Path
-from typing import Callable, Generic, TypeVar
+from typing import Awaitable, Callable, Generic, TypeAlias, TypeVar
 
 from oceanprotocol_job_details import JobDetails  # type: ignore
 
@@ -11,16 +13,19 @@ from ocean_runner.config import Config
 
 InputT = TypeVar("InputT")
 ResultT = TypeVar("ResultT")
-
-ValidateFuncT = Callable[["Algorithm"], None]
-RunFuncT = Callable[["Algorithm"], ResultT] | None
-SaveFuncT = Callable[["Algorithm", ResultT, Path], None]
-ErrorFuncT = Callable[["Algorithm", Exception], None]
+T = TypeVar("T")
 
 
-def default_error_callback(algorithm: Algorithm, e: Exception) -> None:
+Algo: TypeAlias = "Algorithm[InputT, ResultT]"
+ValidateFuncT: TypeAlias = Callable[[Algo], None | Awaitable[None] | None]
+RunFuncT: TypeAlias = Callable[[Algo], ResultT | Awaitable[ResultT]]
+SaveFuncT: TypeAlias = Callable[[Algo, ResultT, Path], Awaitable[None] | None]
+ErrorFuncT: TypeAlias = Callable[[Algo, Exception], Awaitable[None] | None]
+
+
+def default_error_callback(algorithm: Algorithm, error: Exception) -> None:
     algorithm.logger.exception("Error during algorithm execution")
-    raise e
+    raise error
 
 
 def default_validation(algorithm: Algorithm) -> None:
@@ -29,10 +34,34 @@ def default_validation(algorithm: Algorithm) -> None:
     assert algorithm.job_details.files, "Files missing"
 
 
-def default_save(algorithm: Algorithm, result: ResultT, base: Path) -> None:
+async def default_save(algorithm: Algorithm, result: ResultT, base: Path) -> None:
+    import aiofiles
+
     algorithm.logger.info("Saving results using default save")
-    with open(base / "result.txt", "w+") as f:
-        f.write(str(result))
+    async with aiofiles.open(base / "result.txt", "w+") as f:
+        await f.write(str(result))
+
+
+def execute(
+    function: Callable[..., T | Awaitable[T]],
+    *args,
+    **kwargs,
+) -> T:
+    result = function(*args, **kwargs)
+
+    if inspect.isawaitable(result):
+        loop = asyncio.get_running_loop()
+        return loop.run_until_complete(result)
+
+    return result
+
+
+@dataclass(slots=True)
+class Functions(Generic[InputT, ResultT]):
+    validate: ValidateFuncT = field(default=default_validation, init=False)
+    run: RunFuncT | None = field(default=None, init=False)
+    save: SaveFuncT = field(default=default_save, init=False)
+    error: ErrorFuncT = field(default=default_error_callback, init=False)
 
 
 @dataclass
@@ -44,33 +73,13 @@ class Algorithm(Generic[InputT, ResultT]):
     """
 
     config: InitVar[Config[InputT] | None] = field(default=None)
-    logger: Logger = field(init=False)
+
+    logger: Logger = field(init=False, repr=False)
+
     _job_details: JobDetails[InputT] = field(init=False)
     _result: ResultT | None = field(default=None, init=False)
-
-    # Decorator-registered callbacks
-    _validate_fn: ValidateFuncT = field(
-        default=default_validation,
-        init=False,
-        repr=False,
-    )
-
-    _run_fn: RunFuncT = field(
-        default=None,
-        init=False,
-        repr=False,
-    )
-
-    _save_fn: SaveFuncT = field(
-        default=default_save,
-        init=False,
-        repr=False,
-    )
-
-    _error_callback: ErrorFuncT = field(
-        default=default_error_callback,
-        init=False,
-        repr=False,
+    _functions: Functions[InputT, ResultT] = field(
+        default_factory=Functions, init=False, repr=False
     )
 
     def __post_init__(self, config: Config[InputT] | None) -> None:
@@ -127,27 +136,26 @@ class Algorithm(Generic[InputT, ResultT]):
     # ---------------------------
 
     def validate(self, fn: ValidateFuncT) -> ValidateFuncT:
-        self._validate_fn = fn
+        self._functions.validate = fn
         return fn
 
     def run(self, fn: RunFuncT) -> RunFuncT:
-        self._run_fn = fn
+        self._functions.run = fn
         return fn
 
     def save_results(self, fn: SaveFuncT) -> SaveFuncT:
-        self._save_fn = fn
+        self._functions.save = fn
         return fn
 
     def on_error(self, fn: ErrorFuncT) -> ErrorFuncT:
-        self._error_callback = fn
+        self._functions.error = fn
         return fn
 
     # ---------------------------
     # Execution Pipeline
     # ---------------------------
 
-    def __call__(self) -> ResultT | None:
-        """Executes the algorithm pipeline: validate → run → save_results."""
+    async def execute(self) -> ResultT | None:
         # Load job details
         self._job_details = JobDetails.load(
             _type=self.configuration.custom_input,
@@ -161,21 +169,31 @@ class Algorithm(Generic[InputT, ResultT]):
         self.logger.debug(asdict(self.job_details))
 
         try:
-            # Validation step
-            self._validate_fn(self)
+            execute(self._functions.validate, self)
 
-            # Run step
-            if self._run_fn:
+            if self._functions.run:
                 self.logger.info("Running algorithm...")
-                self._result = self._run_fn(self)
+                self._result = execute(self._functions.run, self)
             else:
                 self.logger.error("No run() function defined. Skipping execution.")
                 self._result = None
 
-            # Save step
-            self._save_fn(self, self._result, self.job_details.paths.outputs)
+            execute(
+                self._functions.save,
+                algorithm=self,
+                result=self._result,
+                base=self.job_details.paths.outputs,
+            )
 
         except Exception as e:
-            self._error_callback(self, e)
+            execute(
+                self._functions.error,
+                self,
+                e,
+            )
 
         return self._result
+
+    def __call__(self) -> ResultT | None:
+        """Executes the algorithm pipeline: validate → run → save_results."""
+        return asyncio.run(self.execute())
