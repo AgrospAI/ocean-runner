@@ -42,7 +42,7 @@ async def default_save(algorithm: Algorithm, result: ResultT, base: Path) -> Non
         await f.write(str(result))
 
 
-def execute(
+async def execute(
     function: Callable[..., T | Awaitable[T]],
     *args,
     **kwargs,
@@ -50,8 +50,7 @@ def execute(
     result = function(*args, **kwargs)
 
     if inspect.isawaitable(result):
-        loop = asyncio.get_running_loop()
-        return loop.run_until_complete(result)
+        return await result
 
     return result
 
@@ -169,16 +168,16 @@ class Algorithm(Generic[InputT, ResultT]):
         self.logger.debug(asdict(self.job_details))
 
         try:
-            execute(self._functions.validate, self)
+            await execute(self._functions.validate, self)
 
             if self._functions.run:
                 self.logger.info("Running algorithm...")
-                self._result = execute(self._functions.run, self)
+                self._result = await execute(self._functions.run, self)
             else:
                 self.logger.error("No run() function defined. Skipping execution.")
                 self._result = None
 
-            execute(
+            await execute(
                 self._functions.save,
                 algorithm=self,
                 result=self._result,
@@ -186,11 +185,7 @@ class Algorithm(Generic[InputT, ResultT]):
             )
 
         except Exception as e:
-            execute(
-                self._functions.error,
-                self,
-                e,
-            )
+            await execute(self._functions.error, self, e)
 
         return self._result
 

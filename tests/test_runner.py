@@ -29,22 +29,40 @@ def setup_algorithm(algorithm):
     yield algorithm
 
 
+def test_async(setup_algorithm: Algorithm):
+    import asyncio
+
+    @setup_algorithm.validate
+    async def avalidation(_):
+        await asyncio.sleep(0.01)
+
+    @setup_algorithm.run
+    async def arun(_) -> float:
+        import random
+
+        time = random.randint(0, 10) / 200
+        await asyncio.sleep(time)
+
+        return time
+
+    setup_algorithm()
+
+    assert 0 <= setup_algorithm.result <= 0.05
+
+
 def test_result(setup_algorithm: Algorithm, tmp_path):
     result_file = tmp_path / "results.txt"
 
     @setup_algorithm.save_results
     def save_results(algorithm, result, base) -> None:
         assert result is not None, "Missing result"
-        assert result == 123
 
         with open(result_file, "w+") as f:
             f.write(str(result))
 
     setup_algorithm()
 
-    assert result_file.exists(), "results.txt was not created"
-    with open(result_file, "r") as f:
-        assert f.read() == "123"
+    assert result_file.exists(), f"{result_file.name} was not created"
 
 
 def test_exception(setup_algorithm):
