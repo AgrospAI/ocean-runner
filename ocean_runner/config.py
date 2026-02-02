@@ -1,12 +1,12 @@
 from enum import StrEnum, auto
 from logging import Logger
 from pathlib import Path
-from typing import Generic, Sequence, TypeVar
+from typing import Generic, Sequence, Type, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic_settings import BaseSettings
 
-InputT = TypeVar("InputT")
+InputT = TypeVar("InputT", BaseModel, None)
 
 DEFAULT = "DEFAULT"
 
@@ -21,14 +21,14 @@ class Keys(StrEnum):
 class Environment(BaseSettings):
     """Environment configuration loaded from environment variables"""
 
-    base_dir: str | Path | None = Field(
+    base_dir: str | Path = Field(
         default_factory=lambda: Path("/data"),
         validation_alias=Keys.BASE_DIR.value,
         description="Base data directory, defaults to '/data'",
     )
 
-    dids: list[Path] | str | None = Field(
-        default_factory=list,
+    dids: str | None = Field(
+        default=None,
         validation_alias=Keys.DIDS.value,
         description='Datasets DID\'s, format: ["XXXX"]',
     )
@@ -51,7 +51,7 @@ class Config(BaseModel, Generic[InputT]):
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    custom_input: InputT | None = Field(
+    custom_input: Type[InputT] | None = Field(
         default=None,
         description="Algorithm's custom input types, must be a dataclass_json",
     )

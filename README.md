@@ -2,7 +2,6 @@
 
 Ocean Runner is a package that eases algorithm creation in the scope of OceanProtocol.
 
-
 ## Installation
 
 ```bash
@@ -23,7 +22,7 @@ algorithm = Algorithm()
 
 
 @algorithm.run
-def run():
+def run(_: Algorithm):
     return random.randint()
 
 
@@ -50,14 +49,14 @@ algorithm = Algorithm(
     Config(
         custom_input: ... # dataclass
         # Custom algorithm parameters dataclass.
-        
+
         logger: ... # type: logging.Logger
         # Custom logger to use.
 
         source_paths: ... # type: Iterable[Path]
         # Source paths to include in the PATH
-        
-        environment: ... 
+
+        environment: ...
         # type: ocean_runner.Environment. Mock of environment variables.
     )
 )
@@ -66,12 +65,12 @@ algorithm = Algorithm(
 ```python
 import logging
 
+from pydantic import BaseModel
 from ocean_runner import Algorithm, Config
 
 
-@dataclass
-class CustomInput:
-    foobar: string 
+class CustomInput(BaseModel):
+    foobar: string
 
 
 logger = logging.getLogger(__name__)
@@ -81,7 +80,7 @@ algorithm = Algorithm(
     Config(
         custom_input: CustomInput,
         """
-        Load the Algorithm's Custom Input into a CustomInput dataclass instance.
+        Load the Algorithm's Custom Input into a CustomInput instance.
         """
 
         source_paths: [Path("/algorithm/src")],
@@ -137,33 +136,31 @@ algorithm = Algorithm()
 
 
 @algorithm.on_error
-def error_callback(ex: Exception):
+def error_callback(algorithm: Algorithm, ex: Exception):
     algorithm.logger.exception(ex)
     raise algorithm.Error() from ex
 
 
 @algorithm.validate
-def val():
+def val(algorithm: Algorithm):
     assert algorithm.job_details.files, "Empty input dir"
 
 
 @algorithm.run
-def run() -> pd.DataFrame:
-    _, filename = next(algorithm.job_details.next_path())
+def run(algorithm: Algorithm) -> pd.DataFrame:
+    _, filename = next(algorithm.job_details.inputs())
     return pd.read_csv(filename).describe(include="all")
 
 
 @algorithm.save_results
-def save(results: pd.DataFrame, path: Path):
-    algorithm.logger.info(f"Descriptive statistics: {results}")
-    results.to_csv(path / "results.csv")
+def save(algorithm: Algorithm, result: pd.DataFrame, base: Path):
+    algorithm.logger.info(f"Descriptive statistics: {result}")
+    result.to_csv(base / "result.csv")
 
 
 if __name__ == "__main__":
     algorithm()
 ```
-
-
 
 ### Default implementations
 
@@ -180,7 +177,7 @@ As seen in the minimal example, all methods implemented in `Algorithm` have a de
 
 .run()
 
-    """ 
+    """
     Has NO default implementation, must pass a callback that returns a result of any type.
     """
 
@@ -196,7 +193,8 @@ As seen in the minimal example, all methods implemented in `Algorithm` have a de
 To load the OceanProtocol JobDetails instance, the program will read some environment variables, they can be mocked passing an instance of `Environment` through the configuration of the algorithm.
 
 Environment variables:
+
 - `DIDS` (optional) Input dataset(s) DID's, must have format: `["abc..90"]`. Defaults to reading them automatically from the `DDO` data directory.
 - `TRANSFORMATION_DID` (optional, default="DEFAULT"): Algorithm DID, must have format: `abc..90`.
-- `SECRET` (optional, default="DEFAULT"): Algorithm secret. 
+- `SECRET` (optional, default="DEFAULT"): Algorithm secret.
 - `BASE_DIR` (optional, default="/data"): Base path to the OceanProtocol data directories.

@@ -5,13 +5,14 @@ import inspect
 from dataclasses import InitVar, dataclass, field
 from logging import Logger
 from pathlib import Path
-from typing import Awaitable, Callable, Generic, TypeAlias, TypeVar
+from typing import Awaitable, Callable, Dict, Generic, TypeAlias, TypeVar
 
-from oceanprotocol_job_details import load_job_details, JobDetails  # type: ignore
+from oceanprotocol_job_details import JobDetails, load_job_details
+from pydantic import BaseModel, JsonValue
 
 from ocean_runner.config import Config
 
-InputT = TypeVar("InputT")
+InputT = TypeVar("InputT", BaseModel, None)
 ResultT = TypeVar("ResultT")
 T = TypeVar("T")
 
@@ -110,7 +111,7 @@ class Algorithm(Generic[InputT, ResultT]):
                 f"Added [{len(configuration.source_paths)}] entries to PATH"
             )
 
-        self.configuration = configuration
+        self.configuration: Config[InputT] = configuration
 
     class Error(RuntimeError): ...
 
@@ -151,15 +152,15 @@ class Algorithm(Generic[InputT, ResultT]):
     # ---------------------------
 
     async def execute(self) -> ResultT | None:
-        self._job_details = load_job_details(
-            {
-                "base_dir": self.configuration.environment.base_dir,
-                "dids": self.configuration.environment.dids or [],
-                "secret": self.configuration.environment.secret,
-                "transformation_did": self.configuration.environment.transformation_did,
-            },
-            self.configuration.custom_input,
-        )
+        env = self.configuration.environment
+        config: Dict[str, JsonValue] = {
+            "base_dir": str(env.base_dir),
+            "dids": env.dids,
+            "secret": env.secret,
+            "transformation_did": env.transformation_did,
+        }
+
+        self._job_details = load_job_details(config, self.configuration.custom_input)
 
         self.logger.info("Loaded JobDetails")
         self.logger.debug(self.job_details.model_dump())
