@@ -1,13 +1,11 @@
 from __future__ import annotations
 
-import asyncio
-import inspect
 from dataclasses import InitVar, dataclass, field
 from logging import Logger
 from pathlib import Path
 from typing import Awaitable, Callable, Dict, Generic, TypeAlias, TypeVar
 
-from oceanprotocol_job_details import JobDetails, load_job_details
+from oceanprotocol_job_details import JobDetails, load_job_details, run_in_executor
 from pydantic import BaseModel, JsonValue
 
 from ocean_runner.config import Config
@@ -41,15 +39,6 @@ async def default_save(algorithm: Algorithm, result: ResultT, base: Path) -> Non
     algorithm.logger.info("Saving results using default save")
     async with aiofiles.open(base / "result.txt", "w+") as f:
         await f.write(str(result))
-
-
-async def execute(function: Callable[..., T | Awaitable[T]], *args, **kwargs) -> T:
-    result = function(*args, **kwargs)
-
-    if inspect.isawaitable(result):
-        return await result
-
-    return result
 
 
 @dataclass(slots=True)
@@ -151,7 +140,7 @@ class Algorithm(Generic[InputT, ResultT]):
     # Execution Pipeline
     # ---------------------------
 
-    async def execute(self) -> ResultT | None:
+    def execute(self) -> ResultT | None:
         env = self.configuration.environment
         config: Dict[str, JsonValue] = {
             "base_dir": str(env.base_dir),
@@ -166,27 +155,28 @@ class Algorithm(Generic[InputT, ResultT]):
         self.logger.debug(self.job_details.model_dump())
 
         try:
-            await execute(self._functions.validate, self)
+            run_in_executor(self._functions.validate(self))
 
             if self._functions.run:
                 self.logger.info("Running algorithm...")
-                self._result = await execute(self._functions.run, self)
+                self._result = run_in_executor(self._functions.run(self))
             else:
                 self.logger.error("No run() function defined. Skipping execution.")
                 self._result = None
 
-            await execute(
-                self._functions.save,
-                algorithm=self,
-                result=self._result,
-                base=self.job_details.paths.outputs,
+            run_in_executor(
+                self._functions.save(
+                    algorithm=self,
+                    result=self._result,
+                    base=self.job_details.paths.outputs,
+                ),
             )
 
         except Exception as e:
-            await execute(self._functions.error, self, e)
+            run_in_executor(self._functions.error(self, e))
 
         return self._result
 
     def __call__(self) -> ResultT | None:
         """Executes the algorithm pipeline: validate → run → save_results."""
-        return asyncio.run(self.execute())
+        return self.execute()
