@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import asyncio
 import inspect
-from dataclasses import InitVar, asdict, dataclass, field
+from dataclasses import InitVar, dataclass, field
 from logging import Logger
 from pathlib import Path
 from typing import Awaitable, Callable, Generic, TypeAlias, TypeVar
 
-from oceanprotocol_job_details import JobDetails  # type: ignore
+from oceanprotocol_job_details import load_job_details, JobDetails  # type: ignore
 
 from ocean_runner.config import Config
 
@@ -42,11 +42,7 @@ async def default_save(algorithm: Algorithm, result: ResultT, base: Path) -> Non
         await f.write(str(result))
 
 
-async def execute(
-    function: Callable[..., T | Awaitable[T]],
-    *args,
-    **kwargs,
-) -> T:
+async def execute(function: Callable[..., T | Awaitable[T]], *args, **kwargs) -> T:
     result = function(*args, **kwargs)
 
     if inspect.isawaitable(result):
@@ -155,17 +151,18 @@ class Algorithm(Generic[InputT, ResultT]):
     # ---------------------------
 
     async def execute(self) -> ResultT | None:
-        # Load job details
-        self._job_details = JobDetails.load(
-            _type=self.configuration.custom_input,
-            base_dir=self.configuration.environment.base_dir,
-            dids=self.configuration.environment.dids,
-            transformation_did=self.configuration.environment.transformation_did,
-            secret=self.configuration.environment.secret,
+        self._job_details = load_job_details(
+            {
+                "base_dir": self.configuration.environment.base_dir,
+                "dids": self.configuration.environment.dids or [],
+                "secret": self.configuration.environment.secret,
+                "transformation_did": self.configuration.environment.transformation_did,
+            },
+            self.configuration.custom_input,
         )
 
         self.logger.info("Loaded JobDetails")
-        self.logger.debug(asdict(self.job_details))
+        self.logger.debug(self.job_details.model_dump())
 
         try:
             await execute(self._functions.validate, self)

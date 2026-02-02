@@ -27,8 +27,8 @@ class Environment(BaseSettings):
         description="Base data directory, defaults to '/data'",
     )
 
-    dids: str | list[Path] | None = Field(
-        default=None,
+    dids: list[Path] | str | None = Field(
+        default_factory=list,
         validation_alias=Keys.DIDS.value,
         description='Datasets DID\'s, format: ["XXXX"]',
     )

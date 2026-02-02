@@ -7,7 +7,9 @@ from ocean_runner import Algorithm, Config, Environment
 
 @fixture(scope="session", autouse=True)
 def config():
-    yield Config(environment=Environment(base_dir=Path("./_data")))
+    config = {"base_dir": Path("./_data")}
+    environment = Environment(**config)
+    yield Config(environment=environment)
 
 
 @fixture(scope="session", autouse=True)
