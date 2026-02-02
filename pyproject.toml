@@ -42,7 +42,8 @@ dev = ["mypy>=1.19.1", "types-aiofiles>=25.1.0.20251011"]
 include = ["ocean_runner"]
 
 [tool.hatch.build.targets.wheel]
-include = ["ocean_runner"]
+packages = ["ocean_runner"]
+include = ["ocean_runner/py.typed"]
 
 [tool.mypy]
 plugins = ['pydantic.mypy']
