@@ -16,7 +16,7 @@ classifiers = [
 ]
 dependencies = [
     "aiofiles>=25.1.0",
-    "oceanprotocol-job-details>=0.3.11",
+    "oceanprotocol-job-details>=0.3.13",
     "pydantic>=2.12.5",
     "pydantic-settings>=2.12.0",
     "pytest>=8.4.2",

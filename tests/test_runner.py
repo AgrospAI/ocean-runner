@@ -1,31 +1,32 @@
 from pathlib import Path
 
+import aiofiles
 from pytest import fixture, raises
 
 from ocean_runner import Algorithm, Config, Environment
 
 
-@fixture(scope="session", autouse=True)
+@fixture(scope="session")
 def config():
     config = {"base_dir": Path("./_data")}
     environment = Environment(**config)
     yield Config(environment=environment)
 
 
-@fixture(scope="session", autouse=True)
+@fixture(scope="function")
 def algorithm(config):
     yield Algorithm(config=config)
 
 
-@fixture(scope="session", autouse=True)
+@fixture(scope="function")
 def setup_algorithm(algorithm):
     @algorithm.validate
-    def validate(algorithm):
+    def validate(algorithm: Algorithm):
         assert algorithm.job_details.ddos, "Missing DDOs"
         assert algorithm.job_details.files, "Missing Files"
 
     @algorithm.run
-    def run(algorithm) -> int:
+    def run(algorithm: Algorithm) -> int:
         return 123
 
     yield algorithm
@@ -35,11 +36,11 @@ def test_async(setup_algorithm: Algorithm):
     import asyncio
 
     @setup_algorithm.validate
-    async def avalidation(_):
+    async def avalidation(algorithm: Algorithm):
         await asyncio.sleep(0.01)
 
     @setup_algorithm.run
-    async def arun(_) -> float:
+    async def arun(algorithm: Algorithm) -> float:
         import random
 
         time = random.randint(0, 10) / 200
@@ -56,11 +57,11 @@ def test_result(setup_algorithm: Algorithm, tmp_path):
     result_file = tmp_path / "results.txt"
 
     @setup_algorithm.save_results
-    def save_results(algorithm, result, base) -> None:
+    async def save_results(algorithm: Algorithm, result: int, base: Path) -> None:
         assert result is not None, "Missing result"
 
-        with open(result_file, "w+") as f:
-            f.write(str(result))
+        async with aiofiles.open(result_file, "w+") as f:
+            await f.write(str(result))
 
     setup_algorithm()
 
@@ -69,11 +70,11 @@ def test_result(setup_algorithm: Algorithm, tmp_path):
 
 def test_exception(setup_algorithm):
     @setup_algorithm.run
-    def run(algorithm):
+    def run(algorithm: Algorithm):
         raise Algorithm.Error()
 
     @setup_algorithm.on_error
-    def callback(algorithm, error):
+    def callback(algorithm: Algorithm, error: Exception):
         raise error
 
     with raises(Algorithm.Error):

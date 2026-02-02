@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from dataclasses import InitVar, dataclass, field
 from logging import Logger
 from pathlib import Path
@@ -33,6 +34,10 @@ def default_validation(algorithm: Algorithm) -> None:
     assert algorithm.job_details.files, "Files missing"
 
 
+def default_run(algorithm: Algorithm) -> ResultT:
+    raise algorithm.Error("You must register a 'run' method")
+
+
 async def default_save(algorithm: Algorithm, result: ResultT, base: Path) -> None:
     import aiofiles
 
@@ -44,7 +49,7 @@ async def default_save(algorithm: Algorithm, result: ResultT, base: Path) -> Non
 @dataclass(slots=True)
 class Functions(Generic[InputT, ResultT]):
     validate: ValidateFuncT = field(default=default_validation, init=False)
-    run: RunFuncT | None = field(default=None, init=False)
+    run: RunFuncT = field(default=default_run, init=False)
     save: SaveFuncT = field(default=default_save, init=False)
     error: ErrorFuncT = field(default=default_error_callback, init=False)
 
@@ -140,7 +145,7 @@ class Algorithm(Generic[InputT, ResultT]):
     # Execution Pipeline
     # ---------------------------
 
-    def execute(self) -> ResultT | None:
+    async def execute(self) -> ResultT | None:
         env = self.configuration.environment
         config: Dict[str, JsonValue] = {
             "base_dir": str(env.base_dir),
@@ -155,28 +160,20 @@ class Algorithm(Generic[InputT, ResultT]):
         self.logger.debug(self.job_details.model_dump())
 
         try:
-            run_in_executor(self._functions.validate(self))
-
-            if self._functions.run:
-                self.logger.info("Running algorithm...")
-                self._result = run_in_executor(self._functions.run(self))
-            else:
-                self.logger.error("No run() function defined. Skipping execution.")
-                self._result = None
-
-            run_in_executor(
-                self._functions.save(
-                    algorithm=self,
-                    result=self._result,
-                    base=self.job_details.paths.outputs,
-                ),
+            await run_in_executor(self._functions.validate, self)
+            self._result = await run_in_executor(self._functions.run, self)
+            await run_in_executor(
+                self._functions.save,
+                algorithm=self,
+                result=self._result,
+                base=self.job_details.paths.outputs,
             )
 
         except Exception as e:
-            run_in_executor(self._functions.error(self, e))
+            await run_in_executor(self._functions.error, self, e)
 
         return self._result
 
     def __call__(self) -> ResultT | None:
         """Executes the algorithm pipeline: validate → run → save_results."""
-        return self.execute()
+        return asyncio.run(self.execute())
