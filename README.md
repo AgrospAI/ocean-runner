@@ -1,4 +1,7 @@
-# ocean-runner
+# Ocean Runner
+
+[![PyPI](https://img.shields.io/pypi/v/ocean-runner?label=pypi&style=flat-square)](https://pypi.org/project/ocean-runner/)
+![Coverage](./coverage.svg)
 
 Ocean Runner is a package that eases algorithm creation in the scope of OceanProtocol.
 

@@ -4,43 +4,49 @@ import asyncio
 from dataclasses import InitVar, dataclass, field
 from logging import Logger
 from pathlib import Path
-from typing import Awaitable, Callable, Dict, Generic, TypeAlias, TypeVar
+from typing import Any, Callable, Coroutine, Dict, Generic, TypeAlias, TypeVar
 
+import aiofiles
 from oceanprotocol_job_details import JobDetails, load_job_details, run_in_executor
 from pydantic import BaseModel, JsonValue
 
 from ocean_runner.config import Config
 
-InputT = TypeVar("InputT", BaseModel, None)
+InputT = TypeVar("InputT", bound=BaseModel)
 ResultT = TypeVar("ResultT")
 T = TypeVar("T")
 
 
 Algo: TypeAlias = "Algorithm[InputT, ResultT]"
-ValidateFuncT: TypeAlias = Callable[[Algo], None | Awaitable[None] | None]
-RunFuncT: TypeAlias = Callable[[Algo], ResultT | Awaitable[ResultT]]
-SaveFuncT: TypeAlias = Callable[[Algo, ResultT, Path], Awaitable[None] | None]
-ErrorFuncT: TypeAlias = Callable[[Algo, Exception], Awaitable[None] | None]
+ValidateFuncT: TypeAlias = Callable[[Algo], None | Coroutine[Any, Any, None] | None]
+RunFuncT: TypeAlias = Callable[[Algo], ResultT | Coroutine[Any, Any, ResultT]]
+SaveFuncT: TypeAlias = Callable[[Algo, ResultT, Path], Coroutine[Any, Any, None] | None]
+ErrorFuncT: TypeAlias = Callable[[Algo, Exception], Coroutine[Any, Any, None] | None]
 
 
-def default_error_callback(algorithm: Algorithm, error: Exception) -> None:
+def default_error_callback(
+    algorithm: Algorithm[InputT, ResultT],
+    error: Exception,
+) -> None:
     algorithm.logger.exception("Error during algorithm execution")
     raise error
 
 
-def default_validation(algorithm: Algorithm) -> None:
+def default_validation(algorithm: Algorithm[InputT, ResultT]) -> None:
     algorithm.logger.info("Validating input using default validation")
-    assert algorithm.job_details.ddos, "DDOs missing"
+    assert algorithm.job_details.metadata, "DDOs missing"
     assert algorithm.job_details.files, "Files missing"
 
 
-def default_run(algorithm: Algorithm) -> ResultT:
+def default_run(algorithm: Algorithm[InputT, ResultT]) -> ResultT:
     raise algorithm.Error("You must register a 'run' method")
 
 
-async def default_save(algorithm: Algorithm, result: ResultT, base: Path) -> None:
-    import aiofiles
-
+async def default_save(
+    algorithm: Algorithm[InputT, ResultT],
+    result: ResultT,
+    base: Path,
+) -> None:
     algorithm.logger.info("Saving results using default save")
     async with aiofiles.open(base / "result.txt", "w+") as f:
         await f.write(str(result))
@@ -110,7 +116,7 @@ class Algorithm(Generic[InputT, ResultT]):
     class Error(RuntimeError): ...
 
     @property
-    def job_details(self) -> JobDetails:
+    def job_details(self) -> JobDetails[InputT]:
         if not self._job_details:
             raise Algorithm.Error("JobDetails not initialized or missing")
         return self._job_details

@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 
 import aiofiles
@@ -8,7 +9,7 @@ from ocean_runner import Algorithm, Config, Environment
 
 @fixture(scope="session")
 def config():
-    config = {"base_dir": Path("./_data")}
+    config = {"base_dir": "./_data"}
     environment = Environment(**config)
     yield Config(environment=environment)
 
@@ -22,7 +23,7 @@ def algorithm(config):
 def setup_algorithm(algorithm):
     @algorithm.validate
     def validate(algorithm: Algorithm):
-        assert algorithm.job_details.ddos, "Missing DDOs"
+        assert algorithm.job_details.metadata, "Missing DDOs"
         assert algorithm.job_details.files, "Missing Files"
 
     @algorithm.run
@@ -30,6 +31,30 @@ def setup_algorithm(algorithm):
         return 123
 
     yield algorithm
+
+
+def test_defaults_without_log(config):
+    logger = logging.getLogger(__name__)
+    logger.disabled = True
+
+    config = config.model_copy()
+    config.logger = logger
+    algorithm = Algorithm(config=config)
+
+    with raises(Algorithm.Error):
+        algorithm()
+        algorithm.result
+
+
+def test_empty_job_details_raises(config):
+    algorithm = Algorithm(config=config)
+
+    with raises(Algorithm.Error):
+        algorithm._job_details = None
+        algorithm.job_details
+
+    with raises(Algorithm.Error):
+        algorithm.result
 
 
 def test_async(setup_algorithm: Algorithm):
