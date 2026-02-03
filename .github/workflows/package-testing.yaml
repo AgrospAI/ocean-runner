@@ -29,12 +29,13 @@ jobs:
     - name: Setup python
       run: uv python install
 
-    - name: Run tests
-      run: uv run pytest
+    - name: Run tests and generate coverage
+      run: uv run pytest --cov=ocean_runner
 
     - name: Generate coverage badge
       if: github.event_name == 'push' && github.ref == 'refs/heads/main' && matrix.python-version == '3.13-alpine'
       run: |
+        rm -fr coverage.svg
         uv run coverage-badge -o coverage.svg
 
     - name: Commit coverage badge
