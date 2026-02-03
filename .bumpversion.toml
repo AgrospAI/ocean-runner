@@ -1,5 +1,5 @@
 [tool.bumpversion]
-current_version = "0.2.29"
+current_version = "0.2.30"
 
 [[tool.bumpversion.files]]
 filename = "pyproject.toml"
