@@ -167,13 +167,21 @@ class Algorithm(Generic[InputT, ResultT]):
         self.logger.debug(self.job_details.model_dump())
 
         try:
-            await run_in_executor(self._functions.validate, self)
-            self._result = await run_in_executor(self._functions.run, self)
+            await run_in_executor(
+                self._functions.validate,
+                self,
+            )
+
+            self._result = await run_in_executor(
+                self._functions.run,
+                self,
+            )
+
             await run_in_executor(
                 self._functions.save,
-                algorithm=self,
-                result=self._result,
-                base=self.job_details.paths.outputs,
+                self,
+                self._result,
+                self.job_details.paths.outputs,
             )
 
         except Exception as e:
