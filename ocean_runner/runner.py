@@ -159,6 +159,7 @@ class Algorithm(Generic[InputT, ResultT]):
             "secret": env.secret,
             "transformation_did": env.transformation_did,
         }
+        config = {k: v for k, v in config.items() if v is not None}
 
         self._job_details = load_job_details(config, self.configuration.custom_input)
 
