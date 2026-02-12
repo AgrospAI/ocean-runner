@@ -100,7 +100,7 @@ def test_exception(setup_algorithm):
 
     @setup_algorithm.on_error
     def callback(algorithm: Algorithm, error: Exception):
-        raise error
+        raise Algorithm.Error() from error
 
     with raises(Algorithm.Error):
         setup_algorithm()

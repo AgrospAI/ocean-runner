@@ -29,7 +29,7 @@ def default_error_callback(
     error: Exception,
 ) -> None:
     algorithm.logger.exception("Error during algorithm execution")
-    raise error
+    raise Algorithm.Error() from error
 
 
 def default_validation(algorithm: Algorithm[InputT, ResultT]) -> None:
@@ -184,7 +184,7 @@ class Algorithm(Generic[InputT, ResultT]):
                 self.job_details.paths.outputs,
             )
 
-        except Exception as e:
+        except Algorithm.Error as e:
             await run_in_executor(self._functions.error, self, e)
 
         return self._result
