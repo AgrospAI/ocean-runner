@@ -28,7 +28,7 @@ def default_error_callback(
     algorithm: Algorithm[InputT, ResultT],
     error: Exception,
 ) -> None:
-    algorithm.logger.exception("Error during algorithm execution")
+    algorithm.logger.error("Error during algorithm execution")
     raise Algorithm.Error() from error
 
 

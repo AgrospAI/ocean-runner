@@ -94,16 +94,16 @@ def test_result(setup_algorithm: Algorithm, tmp_path):
 
 
 def test_exception(setup_algorithm):
+    setup_algorithm.logger.disabled = True
+
     @setup_algorithm.run
     def run(algorithm: Algorithm):
         raise Algorithm.Error()
 
-    @setup_algorithm.on_error
-    def callback(algorithm: Algorithm, error: Exception):
-        raise Algorithm.Error() from error
-
     with raises(Algorithm.Error):
         setup_algorithm()
+
+    setup_algorithm.logger.disabled = False
 
 
 def test_error_callback(setup_algorithm):
