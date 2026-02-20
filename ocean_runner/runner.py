@@ -1,18 +1,36 @@
 from __future__ import annotations
 
 import asyncio
-from dataclasses import InitVar, dataclass, field
+from abc import abstractmethod
+from functools import cached_property
 from logging import Logger
 from pathlib import Path
-from typing import Any, Callable, Coroutine, Dict, Generic, TypeAlias, TypeVar
+from typing import (
+    Any,
+    Callable,
+    Coroutine,
+    Dict,
+    Generic,
+    TypeAlias,
+    TypeVar,
+    cast,
+    overload,
+    override,
+)
 
 import aiofiles
-from oceanprotocol_job_details import JobDetails, load_job_details, run_in_executor
+from oceanprotocol_job_details import (
+    EmptyJobDetails,
+    ParametrizedJobDetails,
+    load_job_details,
+    run_in_executor,
+)
+from oceanprotocol_job_details.ocean import _BaseJobDetails
 from pydantic import BaseModel, JsonValue
 
 from ocean_runner.config import Config
 
-InputT = TypeVar("InputT", bound=BaseModel)
+InputT = TypeVar("InputT", bound=BaseModel | None)
 ResultT = TypeVar("ResultT")
 T = TypeVar("T")
 
@@ -22,6 +40,9 @@ ValidateFuncT: TypeAlias = Callable[[Algo], None | Coroutine[Any, Any, None] | N
 RunFuncT: TypeAlias = Callable[[Algo], ResultT | Coroutine[Any, Any, ResultT]]
 SaveFuncT: TypeAlias = Callable[[Algo, ResultT, Path], Coroutine[Any, Any, None] | None]
 ErrorFuncT: TypeAlias = Callable[[Algo, Exception], Coroutine[Any, Any, None] | None]
+
+
+class NoParameters(BaseModel): ...
 
 
 def default_error_callback(
@@ -52,15 +73,14 @@ async def default_save(
         await f.write(str(result))
 
 
-@dataclass(slots=True)
 class Functions(Generic[InputT, ResultT]):
-    validate: ValidateFuncT = field(default=default_validation, init=False)
-    run: RunFuncT = field(default=default_run, init=False)
-    save: SaveFuncT = field(default=default_save, init=False)
-    error: ErrorFuncT = field(default=default_error_callback, init=False)
+    def __init__(self) -> None:
+        self.validate: ValidateFuncT = default_validation
+        self.run: RunFuncT = default_run
+        self.save: SaveFuncT = default_save
+        self.error: ErrorFuncT = default_error_callback
 
 
-@dataclass
 class Algorithm(Generic[InputT, ResultT]):
     """
     A configurable algorithm runner that behaves like a FastAPI app:
@@ -68,20 +88,43 @@ class Algorithm(Generic[InputT, ResultT]):
       - You execute the full pipeline by calling `app()`.
     """
 
-    config: InitVar[Config[InputT] | None] = field(default=None)
+    def __init__(self, configuration: Config[InputT]) -> None:
+        self._initialize_internal_state(configuration)
+        self._result: ResultT | None = None
+        self._functions: Functions[InputT, ResultT] = Functions()
 
-    logger: Logger = field(init=False, repr=False)
+        self.logger: Logger
 
-    _job_details: JobDetails[InputT] = field(init=False)
-    _result: ResultT | None = field(default=None, init=False)
-    _functions: Functions[InputT, ResultT] = field(
-        default_factory=Functions, init=False, repr=False
-    )
+    @overload
+    @classmethod
+    def create(cls, config: Config[InputT]) -> ParametrizedAlgorithm[InputT, ResultT]:
+        pass  # pragma: no cover
 
-    def __post_init__(self, config: Config[InputT] | None) -> None:
-        configuration = config or Config()
+    @overload
+    @classmethod
+    def create(cls, config: Config[None]) -> EmptyAlgorithm[ResultT]:
+        pass  # pragma: no cover
 
-        # Configure logger
+    @overload
+    @classmethod
+    def create(cls, config: None) -> EmptyAlgorithm[ResultT]:
+        pass  # pragma: no cover
+
+    @classmethod
+    def create(cls, config: Any = None) -> Any:
+        """
+        Factory method, inspects the config.custom_input to decide
+        which Algorithm subclass to instantiate.
+        """
+
+        if config is None:
+            config = Config()
+
+        if config.custom_input is None:
+            return EmptyAlgorithm[ResultT](config)
+        return ParametrizedAlgorithm[InputT, ResultT](config)
+
+    def _initialize_internal_state(self, configuration: Config) -> None:
         if configuration.logger:
             self.logger = configuration.logger
         else:
@@ -114,12 +157,6 @@ class Algorithm(Generic[InputT, ResultT]):
         self.configuration: Config[InputT] = configuration
 
     class Error(RuntimeError): ...
-
-    @property
-    def job_details(self) -> JobDetails[InputT]:
-        if not self._job_details:
-            raise Algorithm.Error("JobDetails not initialized or missing")
-        return self._job_details
 
     @property
     def result(self) -> ResultT:
@@ -161,7 +198,11 @@ class Algorithm(Generic[InputT, ResultT]):
         }
         config = {k: v for k, v in config.items() if v is not None}
 
-        self._job_details = load_job_details(self.configuration.custom_input, config)
+        custom_input = None
+        if self.configuration.custom_input is not NoParameters:
+            custom_input = self.configuration.custom_input
+
+        self._job_details = load_job_details(custom_input, config)
 
         self.logger.info("Loaded JobDetails")
         self.logger.debug(self.job_details.model_dump())
@@ -189,6 +230,28 @@ class Algorithm(Generic[InputT, ResultT]):
 
         return self._result
 
+    @abstractmethod
+    @cached_property
+    def job_details(self) -> _BaseJobDetails[InputT]: ...
+
     def __call__(self) -> ResultT | None:
         """Executes the algorithm pipeline: validate → run → save_results."""
         return asyncio.run(self.execute())
+
+
+class ParametrizedAlgorithm(Algorithm[InputT, ResultT]):
+    """For algorithms with validated custom parameters."""
+
+    @override
+    @cached_property
+    def job_details(self) -> ParametrizedJobDetails[InputT]:
+        return self._job_details.read().unwrap()
+
+
+class EmptyAlgorithm(Algorithm[None, ResultT]):
+    """For algorithms with no custom parameters"""
+
+    @override
+    @cached_property
+    def job_details(self) -> EmptyJobDetails[None]:
+        return cast(EmptyJobDetails[None], self._job_details)

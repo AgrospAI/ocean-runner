@@ -6,7 +6,7 @@ from typing import Generic, Sequence, Type, TypeVar
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic_settings import BaseSettings
 
-InputT = TypeVar("InputT", bound=BaseModel)
+InputT = TypeVar("InputT", bound=BaseModel | None)
 
 DEFAULT = "DEFAULT"
 
