@@ -299,7 +299,7 @@ wheels = [
 
 [[package]]
 name = "ocean-runner"
-version = "0.2.32"
+version = "0.3.1"
 source = { editable = "." }
 dependencies = [
     { name = "aiofiles" },
@@ -307,7 +307,7 @@ dependencies = [
     { name = "pydantic" },
     { name = "pydantic-settings" },
     { name = "pytest" },
-    { name = "returns" },
+    { name = "returns", extra = ["compatible-mypy"] },
 ]
 
 [package.dev-dependencies]
@@ -327,7 +327,7 @@ requires-dist = [
     { name = "pydantic", specifier = ">=2.12.5" },
     { name = "pydantic-settings", specifier = ">=2.12.0" },
     { name = "pytest", specifier = ">=8.4.2" },
-    { name = "returns", extras = ["mypy-compatible"], specifier = ">=0.26.0" },
+    { name = "returns", extras = ["compatible-mypy"], specifier = ">=0.26.0" },
 ]
 
 [package.metadata.requires-dev]
