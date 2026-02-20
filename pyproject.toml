@@ -1,6 +1,6 @@
 [project]
 name = "ocean-runner"
-version = "0.2.32"
+version = "0.3.1"
 description = "A fluent API for OceanProtocol algorithms"
 authors = [
     { name = "AgrospAI", email = "agrospai@udl.cat" },
@@ -16,10 +16,11 @@ classifiers = [
 ]
 dependencies = [
     "aiofiles>=25.1.0",
-    "oceanprotocol-job-details>=0.3.22",
+    "oceanprotocol-job-details>=0.4.1",
     "pydantic>=2.12.5",
     "pydantic-settings>=2.12.0",
     "pytest>=8.4.2",
+    "returns[mypy-compatible]>=0.26.0",
 ]
 
 [project.urls]
@@ -38,7 +39,7 @@ build-backend = "hatchling.build"
 [dependency-groups]
 dev = [
     "coverage-badge>=1.1.2",
-    "mypy>=1.19.1",
+    "mypy<1.18.0",
     "pre-commit>=4.5.1",
     "pytest-cov>=7.0.0",
     "ruff>=0.14.14",
@@ -55,4 +56,4 @@ packages = ["ocean_runner"]
 ocean_runner = ["py.typed"]
 
 [tool.mypy]
-plugins = ['pydantic.mypy']
+plugins = ["returns.contrib.mypy.returns_plugin", "pydantic.mypy"]

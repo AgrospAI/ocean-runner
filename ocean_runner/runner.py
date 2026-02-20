@@ -161,7 +161,7 @@ class Algorithm(Generic[InputT, ResultT]):
         }
         config = {k: v for k, v in config.items() if v is not None}
 
-        self._job_details = load_job_details(config, self.configuration.custom_input)
+        self._job_details = load_job_details(self.configuration.custom_input, config)
 
         self.logger.info("Loaded JobDetails")
         self.logger.debug(self.job_details.model_dump())
