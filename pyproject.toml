@@ -1,6 +1,6 @@
 [project]
 name = "ocean-runner"
-version = "0.3.1"
+version = "0.3.2"
 description = "A fluent API for OceanProtocol algorithms"
 authors = [
     { name = "AgrospAI", email = "agrospai@udl.cat" },
