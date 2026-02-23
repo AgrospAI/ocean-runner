@@ -15,29 +15,42 @@ uv add ocean-runner
 
 ## Usage
 
-### Minimal Example
+### Annotated Minimal Example
 
 ```python
 import random
-from ocean_runner import Algorithm
+from ocean_runner import Algorithm, EmptyAlgorithm
 
-algorithm = Algorithm()
+algorithm: EmptyAlgorithm[int] = Algorithm.create(None)
 
 
 @algorithm.run
-def run(_: Algorithm):
-    return random.randint()
-
-
-if __name__ == "__main__":
-    algorithm()
+def run(_) -> int:
+    return random.randint(0, 100)
 ```
 
 This code snippet will:
 
 - Read the OceanProtocol JobDetails from the environment variables and use default configuration file paths.
+- Execute the default input validation function, assessing if there are input dids and ddos.
 - Execute the run function.
 - Execute the default saving function, storing the result in a "result.txt" file within the default outputs path.
+
+### Not Annotated Minimal Example
+
+If you do not care about static analysis tools, this snippet will run just fine.
+
+```python
+import random
+from ocean_runner import Algorithm
+
+algorithm = Algorithm.create(None)
+
+
+@algorithm.run
+def run(_):
+    return random.randint(0, 100)
+```
 
 ### Tuning
 
@@ -48,7 +61,7 @@ The application configuration can be tweaked by passing a Config instance to its
 ```python
 from ocean_runner import Algorithm, Config
 
-algorithm = Algorithm(
+algorithm = Algorithm.create(
     Config(
         custom_input: ... # dataclass
         # Custom algorithm parameters dataclass.
@@ -79,24 +92,24 @@ class CustomInput(BaseModel):
 logger = logging.getLogger(__name__)
 
 
-algorithm = Algorithm(
+algorithm = Algorithm.create(
     Config(
-        custom_input: CustomInput,
+        custom_input=CustomInput,
         """
         Load the Algorithm's Custom Input into a CustomInput instance.
         """
 
-        source_paths: [Path("/algorithm/src")],
+        source_paths=[Path("/algorithm/src")],
         """
         Source paths to include in the PATH. '/algorithm/src' is the default since our templates place the algorithm source files there.
         """
 
-        logger: logger,
+        logger=logger,
         """
         Custom logger to use in the Algorithm.
         """
 
-        environment: Environment(
+        environment=Environment(
             base_dir: "./_data",
             """
             Custom data path to use test data.
@@ -127,42 +140,51 @@ algorithm = Algorithm(
 
 #### Behaviour Config
 
-To fully configure the behaviour of the algorithm as in the [Minimal Example](#minimal-example), you can do it decorating your defined function as in the following example, which features all the possible algorithm customization.
+To fully configure the behaviour of the algorithm as in the [Minimal Example](#minimal-example), you can do it decorating your defined function as in the following fully annotated example (`Pyton >=3.12`), which features all the possible algorithm customization.
 
 ```python
 from pathlib import Path
+from typing import Sequence, Tuple
 
 import pandas as pd
-from ocean_runner import Algorithm
+from oceanprotocol_job_details.domain import DID
 
-algorithm = Algorithm()
+from ocean_runner import Algorithm
+from ocean_runner.runner import EmptyAlgorithm
+
+type ResultT = Tuple[DID, pd.DataFrame]
+type ResultsT = Sequence[ResultT]
+algorithm: EmptyAlgorithm[ResultsT] = Algorithm.create(None)
 
 
 @algorithm.on_error
-def error_callback(algorithm: Algorithm, ex: Exception):
+def error_callback(_, ex: Exception):
     algorithm.logger.exception(ex)
     raise algorithm.Error() from ex
 
 
 @algorithm.validate
-def val(algorithm: Algorithm):
+def val(_) -> None:
     assert algorithm.job_details.files, "Empty input dir"
 
 
 @algorithm.run
-def run(algorithm: Algorithm) -> pd.DataFrame:
-    _, filename = next(algorithm.job_details.inputs())
-    return pd.read_csv(filename).describe(include="all")
+def run(_) -> ResultsT:
+    def describe(df: pd.DataFrame) -> pd.DataFrame:
+        return df.describe(include="all")
+
+    return [
+        (did, describe(pd.read_csv(file_path)))
+        for did, file_path in algorithm.job_details.inputs()
+    ]
 
 
 @algorithm.save_results
-def save(algorithm: Algorithm, result: pd.DataFrame, base: Path):
-    algorithm.logger.info(f"Descriptive statistics: {result}")
-    result.to_csv(base / "result.csv")
+def save(_, result: ResultsT, base: Path):
+    for did, analysis in result:
+        algorithm.logger.info(f"Descriptive statistics {did}: {result}")
+        analysis.to_csv(base / f"{did}.csv")
 
-
-if __name__ == "__main__":
-    algorithm()
 ```
 
 ### Default implementations
