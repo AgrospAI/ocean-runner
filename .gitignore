@@ -1,3 +1,4 @@
+./_data/outputs/*
 
 .coverage
 coverage.xml
