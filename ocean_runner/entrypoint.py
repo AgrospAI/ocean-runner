@@ -20,8 +20,8 @@ def get_version() -> str:
 
 class CLIRunnerConfig(BaseModel):
     module: str = Field(
-        default="algorithm.src",
-        description="The python module path to import (e.g. 'algorithm.src')",
+        default="src.algorithm",
+        description="The python module path to import (e.g. 'src.algorithm')",
     )
 
     base_dir: Path = Field(default=Path("../_data"), description="Base data path")
@@ -36,7 +36,7 @@ class CLIRunnerConfig(BaseModel):
 
 
 def get_algorithm(module_path: str) -> Algorithm | None:
-    # Add cwd to sys.path so "algorithm.src" can be found
+    # Add cwd to sys.path so "src.algorithm" can be found
     if os.getcwd() not in sys.path:
         sys.path.append(os.getcwd())
 
@@ -97,7 +97,7 @@ def get_config(args: Sequence[str]) -> CLIRunnerConfig:
         "module",
         nargs="?",
         default="src.algorithm",
-        help="The module path to import (e.g., 'algorithm.src')",
+        help="The module path to import (e.g., 'src.algorithm')",
     )
     parser.add_argument(
         "--base-dir",
@@ -116,7 +116,7 @@ def setup(args: Sequence[str]) -> CLIRunnerConfig:
 
 
 def main() -> None:
-    config = setup(sys.argv)
+    config = setup(sys.argv[1:])
     run_algorithm(config)
 
 

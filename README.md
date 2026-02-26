@@ -59,9 +59,7 @@ Having defined an algorithm as in the previous steps, you will now run it. To do
 To run locally, or in the `Dockerfile`, you only have to run:
 
 ```bash
-uv run ocean-execute
-# or
-ocean-execute # if .venv activated
+ocean-execute
 ```
 
 This command will:
@@ -79,8 +77,6 @@ This executable makes the developer not need to make use of the `docker-compose`
 As in the previous step, we also added a script to execute the tests without having to resort to the `docker-compose`. Right now it only supports `pytest`. To run it:
 
 ```bash
-uv run ocean-test
-# or
 ocean-test
 ```
 
