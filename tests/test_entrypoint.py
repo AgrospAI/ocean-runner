@@ -62,13 +62,15 @@ def test_get_algorithm_no_instance(mock_import):
 
 
 @patch("ocean_runner.entrypoint.get_algorithm")
-@patch("ocean_runner.entrypoint.get_config")
+@patch(
+    "ocean_runner.entrypoint.get_config",
+    return_value=CLIRunnerConfig(module="test.mod"),
+)
 def test_main_execution_flow(mock_get_config, mock_get_algo):
     """Test the full main loop triggers the algorithm call."""
 
     mock_algo = MagicMock(spec=Algorithm)
     mock_get_algo.return_value = mock_algo
-    mock_get_config.return_value = CLIRunnerConfig(module="test.mod")
 
     main()
 
@@ -76,28 +78,23 @@ def test_main_execution_flow(mock_get_config, mock_get_algo):
     mock_algo.assert_called_once()
 
 
-def test_main_failure_exit():
+@patch("ocean_runner.entrypoint.get_algorithm", return_value=None)
+@patch(
+    "ocean_runner.entrypoint.get_config",
+    return_value=CLIRunnerConfig(module="bad.mod"),
+)
+def test_main_failure_exit(mock_get_config, mock_get_algo):
     """Test that the runner exits with code 1 if no algorithm is found."""
-    with patch(
-        "ocean_runner.entrypoint.get_algorithm",
-        return_value=None,
-    ):
-        with patch(
-            "ocean_runner.entrypoint.get_config",
-            return_value=CLIRunnerConfig(module="bad.mod"),
-        ):
-            with pytest.raises(SystemExit) as excinfo:
-                main()
-            assert excinfo.value.code == 1
+    with pytest.raises(SystemExit) as excinfo:
+        main()
+    assert excinfo.value.code == 1
 
 
-def test_version():
-    with patch("ocean_runner.entrypoint.version") as mock_v:
-        mock_v.return_value = "123"
-        assert "123" in get_version()
+@patch("ocean_runner.entrypoint.version", return_value="123")
+def test_version(mock_version):
+    assert "123" in get_version()
 
 
-def test_version_failing():
-    with patch("ocean_runner.entrypoint.version") as mock_v:
-        mock_v.side_effect = PackageNotFoundError()
-        assert "unknown" in get_version()
+@patch("ocean_runner.entrypoint.version", side_effect=PackageNotFoundError())
+def test_version_failing(mock_version):
+    assert "unknown" in get_version()
