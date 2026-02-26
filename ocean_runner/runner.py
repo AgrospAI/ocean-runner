@@ -18,7 +18,6 @@ from typing import (
     override,
 )
 
-import aiofiles
 from oceanprotocol_job_details import (
     EmptyJobDetails,
     ParametrizedJobDetails,
@@ -68,8 +67,11 @@ async def default_save(
     result: ResultT,
     base: Path,
 ) -> None:
+    from aiofiles import open
+
     algorithm.logger.info("Saving results using default save")
-    async with aiofiles.open(base / "result.txt", "w+") as f:
+
+    async with open(base / "result.txt", "w+") as f:
         await f.write(str(result))
 
 
@@ -217,6 +219,8 @@ class Algorithm(Generic[InputT, ResultT]):
                 self._functions.run,
                 self,
             )
+
+            self.job_details.paths.outputs.mkdir(exist_ok=True)
 
             await run_in_executor(
                 self._functions.save,
