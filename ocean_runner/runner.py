@@ -26,6 +26,7 @@ from oceanprotocol_job_details import (
 )
 from oceanprotocol_job_details.ocean import _BaseJobDetails
 from pydantic import BaseModel, JsonValue
+from returns.result import Success, Failure
 
 from ocean_runner.config import Config
 
@@ -218,13 +219,13 @@ class Algorithm(Generic[InputT, ResultT]):
                 self,
             )
 
-            self.job_details.paths.outputs.mkdir(exist_ok=True)
+            self._job_details.paths.outputs.mkdir(exist_ok=True)
 
             await run_in_executor(
                 self._functions.save,
                 self,
                 self._result,
-                self.job_details.paths.outputs,
+                self._job_details.paths.outputs,
             )
 
         except Algorithm.Error as e:
@@ -247,6 +248,12 @@ class ParametrizedAlgorithm(Algorithm[InputT, ResultT]):
     @override
     @cached_property
     def job_details(self) -> ParametrizedJobDetails[InputT]:
+        match self._job_details.read():
+            case Success(parametrized_job_details):
+                return parametrized_job_details
+            case Failure(error):
+                raise error
+
         return self._job_details.read().unwrap()
 
 
