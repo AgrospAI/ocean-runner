@@ -205,9 +205,7 @@ class Algorithm(Generic[InputT, ResultT]):
             custom_input = self.configuration.custom_input
 
         self._job_details = load_job_details(custom_input, config)
-
         self.logger.info("Loaded JobDetails")
-        self.logger.debug(self.job_details.model_dump())
 
         try:
             await run_in_executor(
