@@ -1,9 +1,16 @@
 import sys
+from importlib.metadata import PackageNotFoundError
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-from ocean_runner.entrypoint import CLIRunnerConfig, get_algorithm, get_config, main
+from ocean_runner.entrypoint import (
+    CLIRunnerConfig,
+    get_algorithm,
+    get_config,
+    get_version,
+    main,
+)
 from ocean_runner.runner import Algorithm
 
 
@@ -82,3 +89,15 @@ def test_main_failure_exit():
             with pytest.raises(SystemExit) as excinfo:
                 main()
             assert excinfo.value.code == 1
+
+
+def test_version():
+    with patch("ocean_runner.entrypoint.version") as mock_v:
+        mock_v.return_value = "123"
+        assert "123" in get_version()
+
+
+def test_version_failing():
+    with patch("ocean_runner.entrypoint.version") as mock_v:
+        mock_v.side_effect = PackageNotFoundError()
+        assert "unknown" in get_version()
