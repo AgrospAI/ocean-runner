@@ -56,7 +56,7 @@ def run(_):
 
 Having defined an algorithm as in the previous steps, you will now run it. To do so, you need the directory structure as in the [data directory](./_data). This structure replicates the production environment, reducing the room for errors when running the deployed algorithm.
 
-To run locally, or in the Dockerfile, you only have to run:
+To run locally, or in the `Dockerfile`, you only have to run:
 
 ```bash
 uv run ocean-execute
@@ -72,7 +72,23 @@ This command will:
 You can see more information running it with `--help`.
 The executable defaults are prepared to run from within the `algorithm` directory in the [ocean-algo templates](https://github.com/AgrospAI/ocean-algo/tree/v2-ocean-runner/_base/python/algorithm).
 
-This executable makes the developer not need to make use of the `docker-compose` that emulates this behaviour, making the development cycle much faster and friendly, being able to debug the code more easily. Even not needing the `docker-compose` it's still a good tool to test your final `Dockerfile` iamge, since it will be the one that will run in the production environment.
+This executable makes the developer not need to make use of the `docker-compose` that emulates this behaviour, making the development cycle much faster and friendly, being able to debug the code more easily. Even not needing the `docker-compose` it's still a good tool to test your final `Dockerfile` image, since it will be the one that will run in the production environment.
+
+### Testing
+
+As in the previous step, we also added a script to execute the tests without having to resort to the `docker-compose`. Right now it only supports `pytest`. To run it:
+
+```bash
+uv run ocean-test
+# or
+ocean-test
+```
+
+As in the `ocean-execute`, it accepts the module and `base_dir` arguments, and also arguments to pass to pytest after `--` as in:
+
+```bash
+ocean-test -- -vv
+```
 
 ### Tuning
 
