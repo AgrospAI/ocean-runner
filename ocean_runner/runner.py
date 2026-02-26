@@ -50,7 +50,7 @@ def default_error_callback(
     error: Exception,
 ) -> None:
     algorithm.logger.error("Error during algorithm execution")
-    raise Algorithm.Error() from error
+    raise error
 
 
 def default_validation(algorithm: Algorithm[InputT, ResultT]) -> None:

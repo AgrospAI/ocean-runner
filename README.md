@@ -52,6 +52,28 @@ def run(_):
     return random.randint(0, 100)
 ```
 
+### Execution
+
+Having defined an algorithm as in the previous steps, you will now run it. To do so, you need the directory structure as in the [data directory](./_data). This structure replicates the production environment, reducing the room for errors when running the deployed algorithm.
+
+To run locally, or in the Dockerfile, you only have to run:
+
+```bash
+uv run ocean-execute
+# or
+ocean-execute # if .venv activated
+```
+
+This command will:
+
+1. Load the `base_dir` that you pass it via arguments (`ocean-execute src.algorithm --base-dir ../_data`), which represents the root of the data directory structure in OceanProtocol.
+2. Load the algorithm instance from the module you pass `src.algorithm` and run it.
+
+You can see more information running it with `--help`.
+The executable defaults are prepared to run from within the `algorithm` directory in the [ocean-algo templates](https://github.com/AgrospAI/ocean-algo/tree/v2-ocean-runner/_base/python/algorithm).
+
+This executable makes the developer not need to make use of the `docker-compose` that emulates this behaviour, making the development cycle much faster and friendly, being able to debug the code more easily. Even not needing the `docker-compose` it's still a good tool to test your final `Dockerfile` iamge, since it will be the one that will run in the production environment.
+
 ### Tuning
 
 #### Application Config
