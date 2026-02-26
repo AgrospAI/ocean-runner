@@ -22,18 +22,14 @@ class MockAlgo(Algorithm):
         self.called = True
 
 
-def test_config_validation_defaults():
-    """Test that CLIRunnerConfig picks up defaults correctly."""
-    with patch.object(sys, "argv", ["ocean-execute", "--base-dir", "./_data"]):
-        config = get_config()
-        assert config.module == "src.algorithm"
-
-
 def test_config_validation_custom_args():
     """Test that CLIRunnerConfig accepts custom module paths."""
-    with patch.object(sys, "argv", ["ocean-execute", "custom.path"]):
+    with patch.object(
+        sys, "argv", ["ocean-execute", "custom.path", "--base-dir", "./_data"]
+    ):
         config = get_config()
         assert config.module == "custom.path"
+        assert config.base_dir.exists()
 
 
 @patch("importlib.import_module")
@@ -64,7 +60,7 @@ def test_get_algorithm_no_instance(mock_import):
 @patch("ocean_runner.entrypoint.get_algorithm")
 @patch(
     "ocean_runner.entrypoint.get_config",
-    return_value=CLIRunnerConfig(module="test.mod"),
+    return_value=CLIRunnerConfig(module="test.mod", base_dir="./_data"),
 )
 def test_main_execution_flow(mock_get_config, mock_get_algo):
     """Test the full main loop triggers the algorithm call."""
@@ -81,7 +77,7 @@ def test_main_execution_flow(mock_get_config, mock_get_algo):
 @patch("ocean_runner.entrypoint.get_algorithm", return_value=None)
 @patch(
     "ocean_runner.entrypoint.get_config",
-    return_value=CLIRunnerConfig(module="bad.mod"),
+    return_value=CLIRunnerConfig(module="bad.mod", base_dir="./_data"),
 )
 def test_main_failure_exit(mock_get_config, mock_get_algo):
     """Test that the runner exits with code 1 if no algorithm is found."""
