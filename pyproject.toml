@@ -28,6 +28,7 @@ Issues = "https://github.com/AgrospAI/ocean-runner/issues"
 
 [project.scripts]
 ocean-execute = "ocean_runner.entrypoint:main"
+ocean-test = "ocean_runner.entrypoint:main_test"
 
 [tool.pytest.ini_options]
 log_level = "INFO"

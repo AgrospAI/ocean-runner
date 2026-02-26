@@ -1,4 +1,3 @@
-import sys
 from importlib.metadata import PackageNotFoundError
 from unittest.mock import MagicMock, patch
 
@@ -24,12 +23,10 @@ class MockAlgo(Algorithm):
 
 def test_config_validation_custom_args():
     """Test that CLIRunnerConfig accepts custom module paths."""
-    with patch.object(
-        sys, "argv", ["ocean-execute", "custom.path", "--base-dir", "./_data"]
-    ):
-        config = get_config()
-        assert config.module == "custom.path"
-        assert config.base_dir.exists()
+
+    config = get_config(["custom.path", "--base-dir", "./_data"])
+    assert config.module == "custom.path"
+    assert config.base_dir.exists()
 
 
 @patch("importlib.import_module")
