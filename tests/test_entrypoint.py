@@ -17,7 +17,7 @@ class MockAlgo(Algorithm):
 
 def test_config_validation_defaults():
     """Test that CLIRunnerConfig picks up defaults correctly."""
-    with patch.object(sys, "argv", ["ocean-execute"]):
+    with patch.object(sys, "argv", ["ocean-execute", "--base-dir", "./_data"]):
         config = get_config()
         assert config.module == "src.algorithm"
 
@@ -47,12 +47,10 @@ def test_get_algorithm_success(mock_import):
 def test_get_algorithm_no_instance(mock_import):
     """Test behavior when no Algorithm instance exists in the module."""
     mock_module = MagicMock()
-    mock_module.algorithm = MagicMock(return_value=["some_other_var"])
-    setattr(mock_module, "some_other_var", "just a string")
-
+    mock_module.algorithm = "just a string"
     mock_import.return_value = mock_module
-
     result = get_algorithm("some.module")
+
     assert result is None
 
 

@@ -42,7 +42,12 @@ def get_algorithm(module_path: str) -> Algorithm | None:
     try:
         module = importlib.import_module(module_path)
 
-        return getattr(module, "algorithm", None)
+        algorithm = getattr(module, "algorithm")
+
+        if not isinstance(algorithm, Algorithm):
+            return None
+
+        return algorithm
     except (ImportError, AttributeError) as e:
         print(f"Error loading algorithm from {module_path}: {e}", file=sys.stderr)
 
