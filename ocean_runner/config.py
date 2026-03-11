@@ -1,3 +1,4 @@
+import os
 from enum import Enum
 from logging import Logger
 from pathlib import Path
@@ -44,6 +45,17 @@ class Environment(BaseSettings):
         validation_alias=Keys.SECRET.value,
         description="Super secret secret",
     )
+
+    def model_post_init(self, context, /) -> None:
+        for field_name, field in self.__class__.model_fields.items():
+            value = getattr(self, field_name)
+
+            if value is None:
+                continue
+
+            key = field.validation_alias
+
+            os.environ[str(key)] = str(value)
 
 
 class Config(BaseModel, Generic[InputT]):
