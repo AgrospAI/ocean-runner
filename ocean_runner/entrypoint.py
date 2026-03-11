@@ -24,7 +24,10 @@ class CLIRunnerConfig(BaseModel):
         description="The python module path to import (e.g. 'src.algorithm')",
     )
 
-    base_dir: Path = Field(default=Path("../_data"), description="Base data path")
+    base_dir: Path = Field(
+        default=Path("../_data"),
+        description="Base data path",
+    )
 
     def model_post_init(self, context, /) -> None:
         if not self.base_dir.exists():

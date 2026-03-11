@@ -15,7 +15,6 @@ from typing import (
     TypeVar,
     cast,
     overload,
-    override,
 )
 
 from oceanprotocol_job_details import (
@@ -26,7 +25,8 @@ from oceanprotocol_job_details import (
 )
 from oceanprotocol_job_details.ocean import _BaseJobDetails
 from pydantic import BaseModel, JsonValue
-from returns.result import Success, Failure
+from returns.result import Failure, Success
+from typing_extensions import override
 
 from ocean_runner.config import Config
 
@@ -110,7 +110,7 @@ class Algorithm(Generic[InputT, ResultT]):
 
     @overload
     @classmethod
-    def create(cls, config: None) -> EmptyAlgorithm[ResultT]:
+    def create(cls, config: None = None) -> EmptyAlgorithm[ResultT]:
         pass  # pragma: no cover
 
     @classmethod
@@ -191,7 +191,9 @@ class Algorithm(Generic[InputT, ResultT]):
     # Execution Pipeline
     # ---------------------------
 
-    async def execute(self) -> ResultT | None:
+    def load(self) -> None:
+        """Load the JobDetails instance"""
+
         env = self.configuration.environment
         config: Dict[str, JsonValue] = {
             "base_dir": str(env.base_dir),
@@ -206,8 +208,10 @@ class Algorithm(Generic[InputT, ResultT]):
             custom_input = self.configuration.custom_input
 
         self._job_details = load_job_details(custom_input, config)
+        self._job_details.paths.outputs.mkdir(exist_ok=True)
         self.logger.info("Loaded JobDetails")
 
+    async def execute(self) -> ResultT | None:
         try:
             await run_in_executor(
                 self._functions.validate,
@@ -218,8 +222,6 @@ class Algorithm(Generic[InputT, ResultT]):
                 self._functions.run,
                 self,
             )
-
-            self._job_details.paths.outputs.mkdir(exist_ok=True)
 
             await run_in_executor(
                 self._functions.save,
@@ -239,6 +241,7 @@ class Algorithm(Generic[InputT, ResultT]):
 
     def __call__(self) -> ResultT | None:
         """Executes the algorithm pipeline: validate → run → save_results."""
+        self.load()
         return asyncio.run(self.execute())
 
 
@@ -253,8 +256,8 @@ class ParametrizedAlgorithm(Algorithm[InputT, ResultT]):
                 return parametrized_job_details
             case Failure(error):
                 raise error
-
-        return self._job_details.read().unwrap()
+            case _:  # pragma: no cover
+                raise RuntimeError("Unreachable code")
 
 
 class EmptyAlgorithm(Algorithm[None, ResultT]):

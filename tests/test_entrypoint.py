@@ -1,4 +1,6 @@
+import sys
 from importlib.metadata import PackageNotFoundError
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -9,6 +11,8 @@ from ocean_runner.entrypoint import (
     get_config,
     get_version,
     main,
+    main_test,
+    run_tests,
 )
 from ocean_runner.runner import Algorithm
 
@@ -27,6 +31,12 @@ def test_config_validation_custom_args():
     config = get_config(["custom.path", "--base-dir", "./_data"])
     assert config.module == "custom.path"
     assert config.base_dir.exists()
+
+
+@patch("pathlib.Path.exists", return_value=False)
+def test_config_validation_raises_if_bad_path(mock_exists):
+    with pytest.raises(FileNotFoundError):
+        get_config(["custom.path", "--base-dir", "./_data"])
 
 
 @patch("importlib.import_module")
@@ -57,7 +67,7 @@ def test_get_algorithm_no_instance(mock_import):
 @patch("ocean_runner.entrypoint.get_algorithm")
 @patch(
     "ocean_runner.entrypoint.get_config",
-    return_value=CLIRunnerConfig(module="test.mod", base_dir="./_data"),
+    return_value=CLIRunnerConfig(module="test.mod", base_dir=Path("./_data")),
 )
 def test_main_execution_flow(mock_get_config, mock_get_algo):
     """Test the full main loop triggers the algorithm call."""
@@ -74,7 +84,7 @@ def test_main_execution_flow(mock_get_config, mock_get_algo):
 @patch("ocean_runner.entrypoint.get_algorithm", return_value=None)
 @patch(
     "ocean_runner.entrypoint.get_config",
-    return_value=CLIRunnerConfig(module="bad.mod", base_dir="./_data"),
+    return_value=CLIRunnerConfig(module="bad.mod", base_dir=Path("./_data")),
 )
 def test_main_failure_exit(mock_get_config, mock_get_algo):
     """Test that the runner exits with code 1 if no algorithm is found."""
@@ -91,3 +101,78 @@ def test_version(mock_version):
 @patch("ocean_runner.entrypoint.version", side_effect=PackageNotFoundError())
 def test_version_failing(mock_version):
     assert "unknown" in get_version()
+
+
+@patch("importlib.import_module", side_effect=ImportError())
+def test_import_algorithm_error(mock_import, capsys):
+    result = get_algorithm("test")
+
+    captured = capsys.readouterr()
+
+    assert result is None
+    assert "Error loading" in captured.err
+
+
+def test_import_not_in_path():
+    fake_cwd = "/fake/path"
+
+    with patch("os.getcwd", return_value=fake_cwd):
+        with patch("sys.path", []):
+            get_algorithm("some.module")
+
+            assert fake_cwd in sys.path
+
+
+@patch("sys.exit")
+@patch("pytest.main", return_value=0)
+@patch("ocean_runner.entrypoint.setup_environment")
+def test_run_tests(mock_setup_env, mock_pytest_main, mock_exit, capsys):
+    config = MagicMock()
+    config.base_dir = Path("/tmp/project")
+
+    args = ["-k", "test_something"]
+
+    run_tests(config, args)
+
+    # Check environment setup
+    mock_setup_env.assert_called_once_with(config.base_dir)
+
+    # Check pytest execution
+    mock_pytest_main.assert_called_once_with(args)
+
+    # Check exit called with pytest result
+    mock_exit.assert_called_once_with(0)
+
+    # Check printed message
+    captured = capsys.readouterr()
+    assert "Preparing Test Environment at:" in captured.out
+
+
+@patch("ocean_runner.entrypoint.run_tests")
+@patch("ocean_runner.entrypoint.setup")
+def test_main_test_with_separator(mock_setup, mock_run_tests):
+    mock_config = MagicMock()
+    mock_setup.return_value = mock_config
+
+    test_argv = ["prog", "--config", "dev", "--", "-k", "test_api"]
+
+    with patch("sys.argv", test_argv):
+        main_test()
+
+    mock_setup.assert_called_once_with(["--config", "dev"])
+    mock_run_tests.assert_called_once_with(mock_config, ["-k", "test_api"])
+
+
+@patch("ocean_runner.entrypoint.run_tests")
+@patch("ocean_runner.entrypoint.setup")
+def test_main_test_without_separator(mock_setup, mock_run_tests):
+    mock_config = MagicMock()
+    mock_setup.return_value = mock_config
+
+    test_argv = ["prog", "--config", "dev"]
+
+    with patch("sys.argv", test_argv):
+        main_test()
+
+    mock_setup.assert_called_once_with(["--config", "dev"])
+    mock_run_tests.assert_called_once_with(mock_config, ["tests"])

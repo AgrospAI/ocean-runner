@@ -1,3 +1,5 @@
+from returns.result import Failure
+from unittest.mock import patch
 import logging
 from functools import partial
 from pathlib import Path
@@ -41,7 +43,7 @@ def setup_algorithm(algorithm):
     yield algorithm
 
 
-def test_algorithm_without_config_raises():
+def test_algorithm_without_config_does_not_raise():
     Algorithm.create()
 
 
@@ -71,6 +73,23 @@ def test_parametrized_job_details(config: Config[CustomInput]):
     assert isinstance(algorithm, ParametrizedAlgorithm)
     assert algorithm.job_details.input_parameters.example == "data"
     assert algorithm.job_details.input_parameters.isTrue
+
+
+def test_parametrized_job_details_failure_reading(config: Config[CustomInput]):
+    class MockError(BaseException): ...
+
+    config = config.model_copy()
+    config.custom_input = CustomInput
+
+    algorithm = Algorithm[CustomInput, int].create(config)
+    algorithm.load()
+
+    with patch(
+        "oceanprotocol_job_details.JobDetails.read",
+        return_value=Failure(MockError()),
+    ):
+        with raises(MockError):
+            algorithm.job_details
 
 
 def test_empty_job_details_raises(config):

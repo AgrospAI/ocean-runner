@@ -1,4 +1,4 @@
-from enum import StrEnum, auto
+from enum import Enum
 from logging import Logger
 from pathlib import Path
 from typing import Generic, Sequence, Type, TypeVar
@@ -11,11 +11,11 @@ InputT = TypeVar("InputT", bound=BaseModel | None)
 DEFAULT = "DEFAULT"
 
 
-class Keys(StrEnum):
-    SECRET = auto()
-    BASE_DIR = auto()
-    TRANSFORMATION_DID = auto()
-    DIDS = auto()
+class Keys(str, Enum):
+    SECRET = "secret"
+    BASE_DIR = "base_dir"
+    TRANSFORMATION_DID = "transformation_did"
+    DIDS = "dids"
 
 
 class Environment(BaseSettings):
