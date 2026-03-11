@@ -76,7 +76,7 @@ def test_parametrized_job_details(config: Config[CustomInput]):
 
 
 def test_parametrized_job_details_failure_reading(config: Config[CustomInput]):
-    class MockError(BaseException): ...
+    class MockError(Exception): ...
 
     config = config.model_copy()
     config.custom_input = CustomInput

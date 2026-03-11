@@ -324,7 +324,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "aiofiles", specifier = ">=25.1.0" },
-    { name = "oceanprotocol-job-details", specifier = ">=0.4.3" },
+    { name = "oceanprotocol-job-details", specifier = ">=0.4.4" },
     { name = "pydantic", specifier = ">=2.12.5" },
     { name = "pydantic-settings", specifier = ">=2.12.0" },
     { name = "returns", extras = ["compatible-mypy"], specifier = ">=0.26.0" },
@@ -344,7 +344,7 @@ dev = [
 
 [[package]]
 name = "oceanprotocol-job-details"
-version = "0.4.3"
+version = "0.4.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiofiles" },
@@ -355,9 +355,9 @@ dependencies = [
     { name = "pydantic-settings" },
     { name = "returns", extra = ["compatible-mypy"] },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/28/d8/bcb952ae3e9c7841b8c76a9e34579d631639e276dec2e4e9d7dd7e1d8006/oceanprotocol_job_details-0.4.3.tar.gz", hash = "sha256:ea8d09c0a94c119d378a3c4f89b89f8fe1a261f844c8ca0a8a26f3a4c07a4d24", size = 8119, upload-time = "2026-02-25T15:28:58.884Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/02/1a/ecc83e142888fbafbc49ab0ff1a5ddbdaaa9193366f9a9ab1876be340db1/oceanprotocol_job_details-0.4.4.tar.gz", hash = "sha256:4ea111abc2ffaa4278aec997632ee930e62657aea14ba1f3b89e8f0a6d7838bd", size = 8135, upload-time = "2026-03-11T12:08:10Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/0a/af/8410a1a8efa7ab39f47969c1cdc8697b6c21f613b4dd9976f1d2a4fbb645/oceanprotocol_job_details-0.4.3-py3-none-any.whl", hash = "sha256:1fbc1c2a7564d0968456f4815a84426d341b91327bf1d07e2279be13a1f41ba0", size = 13941, upload-time = "2026-02-25T15:28:56.891Z" },
+    { url = "https://files.pythonhosted.org/packages/8f/b0/e059cf15b80beedfea0d696c65cc4438f8d4e0072dcae623220f672d8d73/oceanprotocol_job_details-0.4.4-py3-none-any.whl", hash = "sha256:4d6fd76d6f08215ebc86ea819900229f9a82a76b5fb6d4bbc375c7bb4269fb34", size = 13957, upload-time = "2026-03-11T12:08:08.77Z" },
 ]
 
 [[package]]
