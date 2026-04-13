@@ -18,6 +18,7 @@ from typing import (
 )
 
 from oceanprotocol_job_details import (
+    EmptyInputParameters,
     EmptyJobDetails,
     ParametrizedJobDetails,
     load_job_details,
@@ -25,12 +26,11 @@ from oceanprotocol_job_details import (
 )
 from oceanprotocol_job_details.ocean import _BaseJobDetails
 from pydantic import BaseModel, JsonValue
-from returns.result import Failure, Success
 from typing_extensions import override
 
 from ocean_runner.config import Config
 
-InputT = TypeVar("InputT", bound=BaseModel | None)
+InputT = TypeVar("InputT", bound=BaseModel)
 ResultT = TypeVar("ResultT")
 T = TypeVar("T")
 
@@ -251,19 +251,18 @@ class ParametrizedAlgorithm(Algorithm[InputT, ResultT]):
     @override
     @cached_property
     def job_details(self) -> ParametrizedJobDetails[InputT]:
-        match self._job_details.read():
-            case Success(parametrized_job_details):
-                return parametrized_job_details
-            case Failure(error):
-                raise error
-            case _:  # pragma: no cover
-                raise RuntimeError("Unreachable code")
+        result = self._job_details.read()
+
+        if isinstance(result, Exception):
+            raise result
+
+        return result
 
 
-class EmptyAlgorithm(Algorithm[None, ResultT]):
+class EmptyAlgorithm(Algorithm[EmptyInputParameters, ResultT]):
     """For algorithms with no custom parameters"""
 
     @override
     @cached_property
-    def job_details(self) -> EmptyJobDetails[None]:
-        return cast(EmptyJobDetails[None], self._job_details)
+    def job_details(self) -> EmptyJobDetails[EmptyInputParameters]:
+        return cast(EmptyJobDetails[EmptyInputParameters], self._job_details)

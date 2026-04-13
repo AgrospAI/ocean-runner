@@ -1,8 +1,7 @@
-from returns.result import Failure
-from unittest.mock import patch
 import logging
 from functools import partial
 from pathlib import Path
+from unittest.mock import patch
 
 import aiofiles
 from pydantic import BaseModel
@@ -84,10 +83,7 @@ def test_parametrized_job_details_failure_reading(config: Config[CustomInput]):
     algorithm = Algorithm[CustomInput, int].create(config)
     algorithm.load()
 
-    with patch(
-        "oceanprotocol_job_details.JobDetails.read",
-        return_value=Failure(MockError()),
-    ):
+    with patch("oceanprotocol_job_details.JobDetails.read", return_value=MockError()):
         with raises(MockError):
             algorithm.job_details
 
