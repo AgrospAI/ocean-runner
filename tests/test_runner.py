@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from functools import partial
 from pathlib import Path
@@ -98,24 +99,19 @@ def test_empty_job_details_raises(config):
 
 
 def test_async(setup_algorithm: Algorithm):
-    import asyncio
-
     @setup_algorithm.validate
     async def _(_):
         await asyncio.sleep(0.01)
 
     @setup_algorithm.run
     async def _(_) -> float:
-        import random
+        await asyncio.sleep(0)
 
-        time = random.randint(0, 10) / 200
-        await asyncio.sleep(time)
-
-        return time
+        return 0
 
     setup_algorithm()
 
-    assert 0 <= setup_algorithm.result <= 0.05
+    assert 0 == setup_algorithm.result
 
 
 def test_result(setup_algorithm: Algorithm, tmp_path):

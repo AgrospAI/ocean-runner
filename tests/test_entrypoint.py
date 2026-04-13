@@ -126,9 +126,9 @@ def test_import_not_in_path():
 @patch("sys.exit")
 @patch("pytest.main", return_value=0)
 @patch("ocean_runner.entrypoint.setup_environment")
-def test_run_tests(mock_setup_env, mock_pytest_main, mock_exit, capsys):
+def test_run_tests(mock_setup_env, mock_pytest_main, mock_exit, capsys, tmp_path):
     config = MagicMock()
-    config.base_dir = Path("/tmp/project")
+    config.base_dir = tmp_path
 
     args = ["-k", "test_something"]
 
