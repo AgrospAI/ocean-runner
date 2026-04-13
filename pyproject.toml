@@ -58,6 +58,3 @@ packages = ["ocean_runner"]
 
 [tool.hatch.build.targets.wheel.package-data]
 ocean_runner = ["py.typed"]
-
-[tool.mypy]
-plugins = ["returns.contrib.mypy.returns_plugin", "pydantic.mypy"]
