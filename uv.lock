@@ -264,7 +264,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "aiofiles", specifier = ">=25.1.0" },
-    { name = "oceanprotocol-job-details", specifier = ">=0.4.5" },
+    { name = "oceanprotocol-job-details", specifier = ">=0.4.6" },
     { name = "pydantic", specifier = ">=2.12.5" },
     { name = "pydantic-settings", specifier = ">=2.12.0" },
 ]
@@ -283,7 +283,7 @@ dev = [
 
 [[package]]
 name = "oceanprotocol-job-details"
-version = "0.4.5"
+version = "0.4.6"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiofiles" },
@@ -292,9 +292,9 @@ dependencies = [
     { name = "pydantic" },
     { name = "pydantic-settings" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/3f/70/b89167e82d40a1bec53d455c175997e372a51ec740cdb5248d14b2273349/oceanprotocol_job_details-0.4.5.tar.gz", hash = "sha256:821d0b88c210344781b3dc1d100658c399e30cac747638807f2a61c5dbf3ef88", size = 8998, upload-time = "2026-04-13T08:26:46.94Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/4e/a1/7c90066a9780af6ee5853c12921abda83caf93ca6c21b819c46552d2a137/oceanprotocol_job_details-0.4.6.tar.gz", hash = "sha256:16a1fb9667b5f1f1429a65f5c81334397e9cdcea0e7e9178c5ba0bbd662950e6", size = 9004, upload-time = "2026-06-03T10:45:39.557Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b7/1f/64a75452aff5936ce89b2b9999a4eeb21eab892c40f20b70d90df55295d9/oceanprotocol_job_details-0.4.5-py3-none-any.whl", hash = "sha256:99085ad1772ba36e37e7d0bd11e2ff6fc1878a5289adbb58b2f859a273475e51", size = 15750, upload-time = "2026-04-13T08:26:45.795Z" },
+    { url = "https://files.pythonhosted.org/packages/86/d0/e1f1b4d236c821292364e14c04cc882b27cd0fb44ae09a4211c77074e417/oceanprotocol_job_details-0.4.6-py3-none-any.whl", hash = "sha256:1bd85749b227e4ac5b23fe5a6e5f3cdf77bb95f8c7fa64f6f8dbf08d07298268", size = 15758, upload-time = "2026-06-03T10:45:38.484Z" },
 ]
 
 [[package]]
